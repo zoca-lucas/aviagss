@@ -1,0 +1,45 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.badge-sm {
+  height: 20px;
+  padding: 0 0.5rem;
+  font-size: 0.6875rem;
+}
+
+.badge-md {
+  height: 24px;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+}
+
+.badge-default {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.badge-success {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.badge-warning {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.badge-danger {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+.badge-info {
+  background: var(--info-light);
+  color: var(--info-color);
+}

@@ -1,0 +1,259 @@
+.agenda-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.agenda-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Calendar */
+.calendar-card .card-body {
+  padding: 1.5rem;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.calendar-header h2 {
+  font-size: 1.25rem;
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.nav-btn {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.day-name {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  text-transform: uppercase;
+}
+
+.calendar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.calendar-cell:hover:not(.disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
+.calendar-cell.disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.calendar-cell.today {
+  background: var(--accent-light);
+}
+
+.calendar-cell.today .day-number {
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+.calendar-cell.selected {
+  border: 2px solid var(--accent-color);
+}
+
+.day-number {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.day-bookings {
+  display: flex;
+  gap: 0.125rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.booking-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.more-bookings {
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+/* Bookings List */
+.bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.booking-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  gap: 1rem;
+}
+
+.booking-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.booking-member {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.member-name {
+  display: block;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.booking-dates {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.booking-purpose {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0 0;
+}
+
+.booking-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.action-btn.danger:hover {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+.empty-bookings {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.new-booking-btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .agenda-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-cell {
+    aspect-ratio: auto;
+    min-height: 60px;
+  }
+}

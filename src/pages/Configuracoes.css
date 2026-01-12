@@ -1,0 +1,308 @@
+.configuracoes-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.config-card.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Config Section */
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  gap: 1rem;
+}
+
+.config-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  flex: 1;
+}
+
+.config-info svg {
+  color: var(--accent-color);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.config-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.config-label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.config-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.config-input {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.config-input .input {
+  text-align: center;
+}
+
+/* Audit Section */
+.audit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.audit-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.audit-info svg {
+  color: var(--accent-color);
+}
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.audit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.audit-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.action-badge.create {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.action-badge.update {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.action-badge.delete {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+.audit-entity {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.audit-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.empty-audit {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* TBO Section */
+.config-card.tbo-card {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.tbo-info-box {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.tbo-info-box svg {
+  color: #a855f7;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.tbo-info-box h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.tbo-info-box p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.config-item.highlight {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.config-input.tbo-input {
+  width: 150px;
+}
+
+.config-input.tbo-input .input {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #a855f7;
+}
+
+.tbo-example {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.example-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.example-calc {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.example-calc strong {
+  color: #a855f7;
+  font-size: 1.1rem;
+}
+
+.tbo-rules {
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.tbo-rules h5 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.tbo-rules ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.tbo-rules li {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.tbo-rules li:last-child {
+  margin-bottom: 0;
+}
+
+/* About Section */
+.about-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.about-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-xl);
+  background: var(--accent-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.about-section h3 {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.about-section > p {
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+}
+
+.about-details {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .config-input {
+    width: 100%;
+  }
+}

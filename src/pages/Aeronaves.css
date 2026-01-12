@@ -1,0 +1,155 @@
+.aeronaves-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.aeronaves-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.aircraft-card {
+  position: relative;
+}
+
+.aircraft-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.aircraft-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.aircraft-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.aircraft-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.action-btn {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.action-btn.danger:hover {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+.aircraft-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.aircraft-prefix {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.aircraft-model {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.aircraft-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.aircraft-stats .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.aircraft-stats .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.aircraft-stats .stat-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.aircraft-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.select-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Components Section */
+.components-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.components-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.components-header h4 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.25rem;
+}
