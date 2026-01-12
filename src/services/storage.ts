@@ -2283,7 +2283,7 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
     const users = storage.getUsers();
     if (users.length > 0) return;
     
-    // Criar apenas usuário admin básico
+    // Criar usuário admin básico
     const admin: User = {
       id: generateId(),
       email: 'admin@aerogestao.com',
@@ -2297,6 +2297,37 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
     };
     
     storage.saveUser(admin, 'system', 'Sistema');
+    
+    // Criar aeronave padrão para o dashboard funcionar imediatamente
+    const defaultAircraft: Aircraft = {
+      id: generateId(),
+      prefixo: 'PP-XXX',
+      modelo: 'Aeronave Exemplo',
+      fabricante: 'A definir',
+      anoFabricacao: new Date().getFullYear(),
+      numeroSerie: '000000',
+      horasCelula: 0,
+      horasMotor: 0,
+      ciclosMotor: 0,
+      horasHelice: 0,
+      tipoCombustivel: 'avgas',
+      unidadeCombustivel: 'litros',
+      capacidadeCombustivel: 200,
+      consumoMedio: 40,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      active: true,
+    };
+    
+    storage.saveAircraft(defaultAircraft, 'system', 'Sistema');
+  },
+  
+  // Função para limpar todos os dados e reinicializar
+  resetAllData: (): void => {
+    // Limpar todos os dados do localStorage
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
   },
 
   // ==========================================

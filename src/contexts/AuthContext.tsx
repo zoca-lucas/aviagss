@@ -34,11 +34,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Inicializar apenas com usuário admin básico (sem dados de exemplo)
+    // Limpar dados antigos e inicializar do zero (para desenvolvimento limpo)
+    const needsReset = !localStorage.getItem('aerogestao_initialized_v3');
+    if (needsReset) {
+      storage.resetAllData();
+      localStorage.setItem('aerogestao_initialized_v3', 'true');
+    }
+    
+    // Inicializar com admin e aeronave padrão
     storage.initializeBasicAdmin();
     
     // Tentar carregar usuário salvo ou fazer login automático como admin
     let currentUser = storage.getCurrentUser();
+    
     if (!currentUser) {
       // Login automático com admin
       currentUser = storage.login('admin@aerogestao.com');
@@ -46,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (currentUser) {
       setUser(currentUser);
     }
+    
     setIsLoading(false);
   }, []);
 

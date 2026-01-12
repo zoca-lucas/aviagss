@@ -18,7 +18,6 @@ import {
   Users as UsersIcon,
   Settings,
   Bell,
-  LogOut,
   Menu,
   X,
   ChevronDown,
@@ -31,7 +30,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { user, logout, permissions } = useAuth();
+  const { user, permissions } = useAuth();
   const { aircrafts, selectedAircraft, selectAircraft } = useAircraft();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -126,20 +125,6 @@ export default function Layout({ children }: LayoutProps) {
             })}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="user-info">
-            <div className="user-avatar">
-              {user.nome.charAt(0).toUpperCase()}
-            </div>
-            <div className="user-details">
-              <span className="user-name">{user.nome}</span>
-              <span className="user-role">{user.role}</span>
-            </div>
-          </div>
-          <button className="logout-btn" onClick={logout} title="Sair">
-            <LogOut size={20} />
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
