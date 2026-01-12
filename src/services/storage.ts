@@ -2291,6 +2291,9 @@ export const storage = {
     // Verificar se já existe dados
     if (storage.getUsers().length > 0) return;
     
+    // Dados reais de voos
+    const realFlightEntries = getRealFlightData();
+    
     // Criar usuário admin
     const admin: User = {
       id: generateId(),
@@ -2305,37 +2308,51 @@ export const storage = {
     };
     storage.saveUser(admin);
     
-    // Criar piloto de exemplo
-    const piloto: User = {
+    // Criar sócio Grossi
+    const grossi: User = {
       id: generateId(),
-      email: 'piloto@aerogestao.com',
-      nome: 'João Silva',
-      telefone: '(11) 98888-8888',
-      role: 'piloto',
-      horasTotais: 250,
+      email: 'grossi@aerogestao.com',
+      nome: 'Grossi',
+      telefone: '(34) 99999-0001',
+      role: 'cotista',
+      horasTotais: 8.5,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       active: true,
     };
-    storage.saveUser(piloto);
+    storage.saveUser(grossi);
     
-    // Criar aeronave de exemplo
+    // Criar sócio Shimada
+    const shimada: User = {
+      id: generateId(),
+      email: 'shimada@aerogestao.com',
+      nome: 'Shimada',
+      telefone: '(34) 99999-0002',
+      role: 'cotista',
+      horasTotais: 0.65,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      active: true,
+    };
+    storage.saveUser(shimada);
+    
+    // Criar aeronave PT-GSS (King Air C90)
     const aircraft: Aircraft = {
       id: generateId(),
-      prefixo: 'PT-ABC',
-      modelo: 'Cessna 172',
-      fabricante: 'Cessna',
-      numeroSerie: '172-12345',
-      anoFabricacao: 2015,
-      tipo: 'pistao',
-      baseHangar: 'SBSP',
-      consumoMedio: 36,
-      velocidadeCruzeiro: 120,
-      tipoCombustivel: 'avgas',
-      unidadeCombustivel: 'litros',
-      horasCelula: 1500,
-      ciclosTotais: 3000,
-      custoHora: 450,
+      prefixo: 'PT-GSS',
+      modelo: 'King Air C90GTi',
+      fabricante: 'Beechcraft',
+      numeroSerie: 'LJ-2145',
+      anoFabricacao: 2018,
+      tipo: 'turbohelice',
+      baseHangar: 'SDCO', // Sorocaba
+      consumoMedio: 340, // lbs/h (convertido para litros ~190 L/h)
+      velocidadeCruzeiro: 260,
+      tipoCombustivel: 'jeta',
+      unidadeCombustivel: 'libras',
+      horasCelula: 1250,
+      ciclosTotais: 2100,
+      custoHora: 2800,
       reservaCombustivel: 45,
       margemSeguranca: 10,
       createdAt: new Date().toISOString(),
@@ -2344,22 +2361,62 @@ export const storage = {
     };
     storage.saveAircraft(aircraft, admin.id, admin.nome);
     
-    // Criar motor
-    const motor: AircraftComponent = {
+    // Criar motores PT6A-135A
+    const motorEsquerdo: AircraftComponent = {
       id: generateId(),
       aircraftId: aircraft.id,
       tipo: 'motor',
-      serial: 'LYC-O-320-12345',
-      modelo: 'O-320',
-      fabricante: 'Lycoming',
-      limiteTSO: 2000,
-      horasAtuais: 1500,
-      dataInstalacao: '2015-01-01',
+      serial: 'PCE-RD0345',
+      modelo: 'PT6A-135A',
+      fabricante: 'Pratt & Whitney',
+      limiteTSO: 3600,
+      horasAtuais: 1250,
+      dataInstalacao: '2018-01-01',
     };
-    storage.saveComponent(motor, admin.id, admin.nome);
+    storage.saveComponent(motorEsquerdo, admin.id, admin.nome);
     
-    // Criar manutenção programada
-    const manutencao: MaintenanceSchedule = {
+    const motorDireito: AircraftComponent = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      tipo: 'motor',
+      serial: 'PCE-RD0346',
+      modelo: 'PT6A-135A',
+      fabricante: 'Pratt & Whitney',
+      limiteTSO: 3600,
+      horasAtuais: 1250,
+      dataInstalacao: '2018-01-01',
+    };
+    storage.saveComponent(motorDireito, admin.id, admin.nome);
+    
+    // Criar hélices
+    const heliceEsquerda: AircraftComponent = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      tipo: 'helice',
+      serial: 'HC-E4A-3D-2345',
+      modelo: 'HC-E4A-3D',
+      fabricante: 'Hartzell',
+      limiteTSO: 6000,
+      horasAtuais: 1250,
+      dataInstalacao: '2018-01-01',
+    };
+    storage.saveComponent(heliceEsquerda, admin.id, admin.nome);
+    
+    const heliceDireita: AircraftComponent = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      tipo: 'helice',
+      serial: 'HC-E4A-3D-2346',
+      modelo: 'HC-E4A-3D',
+      fabricante: 'Hartzell',
+      limiteTSO: 6000,
+      horasAtuais: 1250,
+      dataInstalacao: '2018-01-01',
+    };
+    storage.saveComponent(heliceDireita, admin.id, admin.nome);
+    
+    // Criar manutenções programadas
+    const inspecao100h: MaintenanceSchedule = {
       id: generateId(),
       aircraftId: aircraft.id,
       nome: 'Inspeção 100h',
@@ -2367,30 +2424,705 @@ export const storage = {
       tipo: 'inspecao',
       trigger: 'horas',
       intervaloHoras: 100,
-      proximasHoras: 1600,
+      proximasHoras: 1300,
       alertaAntesHoras: 10,
       obrigatorio: true,
       ativo: true,
     };
-    storage.saveMaintenanceSchedule(manutencao, admin.id, admin.nome);
+    storage.saveMaintenanceSchedule(inspecao100h, admin.id, admin.nome);
     
-    // Criar membership
-    const membership: Membership = {
+    const inspecaoAnual: MaintenanceSchedule = {
       id: generateId(),
-      userId: piloto.id,
+      aircraftId: aircraft.id,
+      nome: 'Inspeção Anual',
+      descricao: 'Inspeção anual de aeronavegabilidade',
+      tipo: 'inspecao',
+      trigger: 'calendario',
+      intervaloDias: 365,
+      proximaData: '2025-06-15',
+      alertaAntesDias: 30,
+      obrigatorio: true,
+      ativo: true,
+    };
+    storage.saveMaintenanceSchedule(inspecaoAnual, admin.id, admin.nome);
+    
+    // Criar memberships (50% cada sócio)
+    const membershipGrossi: Membership = {
+      id: generateId(),
+      userId: grossi.id,
       aircraftId: aircraft.id,
       tipoParticipacao: 'cotista',
       rateioType: 'hora_voo',
       cotaPercentual: 50,
       status: 'ativo',
-      dataInicio: new Date().toISOString().split('T')[0],
+      dataInicio: '2024-01-01',
     };
-    storage.saveMembership(membership, admin.id, admin.nome);
+    storage.saveMembership(membershipGrossi, admin.id, admin.nome);
     
-    // Salvar aeroportos padrão
-    setItem(STORAGE_KEYS.AIRPORTS, getDefaultAirports());
+    const membershipShimada: Membership = {
+      id: generateId(),
+      userId: shimada.id,
+      aircraftId: aircraft.id,
+      tipoParticipacao: 'cotista',
+      rateioType: 'hora_voo',
+      cotaPercentual: 50,
+      status: 'ativo',
+      dataInicio: '2024-01-01',
+    };
+    storage.saveMembership(membershipShimada, admin.id, admin.nome);
+    
+    // Função auxiliar para converter tempo hh:mm para minutos
+    const timeToMinutes = (time: string): number => {
+      if (!time || time === '') return 0;
+      const parts = time.split(':');
+      if (parts.length !== 2) return 0;
+      const hours = parseInt(parts[0], 10) || 0;
+      const minutes = parseInt(parts[1], 10) || 0;
+      return (hours * 60) + minutes;
+    };
+    
+    // Carregar todos os lançamentos de voo reais
+    realFlightEntries.forEach((entry: RealFlightEntry) => {
+      const flightEntry: FlightEntry = {
+        id: generateId(),
+        aircraftId: aircraft.id,
+        
+        voo: entry.voo,
+        subVoo: entry.subVoo,
+        data: entry.data,
+        grupo: entry.grupo,
+        origem: entry.origem,
+        destino: entry.destino,
+        
+        tempoAcionamentoCorte: timeToMinutes(entry.tempoAcionamento),
+        tempoVoo: timeToMinutes(entry.tempoVoo),
+        
+        combustivelInicial: entry.combustivelInicial,
+        abastecimentoLibras: entry.abastecimentoLibras,
+        abastecimentoLitros: entry.abastecimentoLitros,
+        localAbastecimento: entry.localAbastecimento,
+        combustivelDecolagem: entry.combustivelDecolagem,
+        combustivelConsumido: entry.combustivelConsumidoLibras,
+        combustivelConsumidoLitros: entry.combustivelConsumidoLitros,
+        combustivelFinal: entry.combustivelFinal,
+        tipoMedicaoCombustivel: 'libras',
+        
+        valorCombustivel: entry.valorCombustivel,
+        hangar: entry.hangar,
+        alimentacao: entry.alimentacao,
+        hospedagem: entry.hospedagem,
+        limpeza: entry.limpeza,
+        uberTaxi: entry.uberTaxi,
+        tarifas: entry.tarifas,
+        outras: entry.outras,
+        
+        provisaoTboGrossi: entry.provisaoTBOGrossi,
+        provisaoTboShimada: entry.provisaoTBOShimada,
+        
+        observacoes: entry.observacoes,
+        
+        total: entry.valorCombustivel + entry.hangar + entry.alimentacao + 
+               entry.hospedagem + entry.limpeza + entry.uberTaxi + 
+               entry.tarifas + entry.outras + entry.provisaoTBOGrossi + entry.provisaoTBOShimada,
+        
+        status: 'conferido',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: admin.id,
+      };
+      
+      const entries = getItem<FlightEntry[]>(STORAGE_KEYS.FLIGHT_ENTRIES, []);
+      entries.push(flightEntry);
+      setItem(STORAGE_KEYS.FLIGHT_ENTRIES, entries);
+    });
+    
+    // Criar documentos
+    const docAeronavegabilidade: Document = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      tipo: 'aeronavegabilidade',
+      nome: 'Certificado de Aeronavegabilidade',
+      descricao: 'CA válido',
+      dataEmissao: '2024-01-15',
+      dataValidade: '2025-01-15',
+      observacoes: 'Renovar junto com inspeção anual',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    storage.saveDocument(docAeronavegabilidade, admin.id, admin.nome);
+    
+    const docSeguro: Document = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      tipo: 'seguro',
+      nome: 'Apólice de Seguro Aeronáutico',
+      descricao: 'Cobertura completa - Porto Seguro',
+      dataEmissao: '2024-06-01',
+      dataValidade: '2025-06-01',
+      observacoes: 'Valor segurado: R$ 3.500.000,00',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    storage.saveDocument(docSeguro, admin.id, admin.nome);
+    
+    // Criar Reserva de Margem
+    const marginReserve: MarginReserve = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      valorMinimo: 200000,
+      saldoAtual: 180000, // Abaixo do mínimo para mostrar alerta
+      status: 'atencao',
+      ultimaAtualizacao: new Date().toISOString(),
+    };
+    setItem(STORAGE_KEYS.MARGIN_RESERVES, [marginReserve]);
+    
+    // Criar Ativo - Hangar em Construção
+    const hangarAsset: AircraftAsset = {
+      id: generateId(),
+      aircraftId: aircraft.id,
+      nome: 'Hangar Próprio - Base Patos de Minas',
+      tipo: 'imobilizado',
+      status: 'em_construcao',
+      dataInicio: '2024-03-01',
+      valorInvestido: 450000,
+      valorEstimadoTotal: 800000,
+      observacoes: 'Construção do hangar próprio na base de Patos de Minas. Previsão de conclusão: Junho/2025.',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setItem(STORAGE_KEYS.AIRCRAFT_ASSETS, [hangarAsset]);
+    
+    // Salvar aeroportos padrão + aeroportos usados nos voos
+    const airports = getDefaultAirports();
+    // Adicionar aeroportos específicos dos voos reais
+    airports.push(
+      { icao: 'SNPD', nome: 'Patos de Minas', cidade: 'Patos de Minas', pais: 'Brasil', latitude: -18.6728, longitude: -46.4917, elevacao: 2815, taxaPouso: 50 },
+      { icao: 'SNPT', nome: 'Patrocínio', cidade: 'Patrocínio', pais: 'Brasil', latitude: -18.9439, longitude: -46.9869, elevacao: 3051, taxaPouso: 40 },
+      { icao: 'SBAX', nome: 'Araxá', cidade: 'Araxá', pais: 'Brasil', latitude: -19.5631, longitude: -46.9639, elevacao: 3274, taxaPouso: 80 },
+      { icao: 'SBGO', iata: 'GYN', nome: 'Santa Genoveva', cidade: 'Goiânia', pais: 'Brasil', latitude: -16.6319, longitude: -49.2206, elevacao: 2450, taxaPouso: 120 },
+      { icao: 'SBMK', iata: 'MOC', nome: 'Montes Claros', cidade: 'Montes Claros', pais: 'Brasil', latitude: -16.7069, longitude: -43.8189, elevacao: 2191, taxaPouso: 100 },
+    );
+    setItem(STORAGE_KEYS.AIRPORTS, airports);
   },
 };
+
+// ============================================
+// DADOS REAIS DE VOOS (Para apresentação)
+// ============================================
+
+interface RealFlightEntry {
+  voo: string;
+  subVoo: string;
+  data: string;
+  grupo: 'grossi' | 'shimada' | 'grossi_shimada';
+  origem: string;
+  destino: string;
+  tempoAcionamento: string;
+  tempoVoo: string;
+  combustivelInicial: number;
+  abastecimentoLibras: number;
+  abastecimentoLitros: number;
+  localAbastecimento: string;
+  combustivelDecolagem: number;
+  combustivelConsumidoLibras: number;
+  combustivelConsumidoLitros: number;
+  combustivelFinal: number;
+  valorCombustivel: number;
+  hangar: number;
+  alimentacao: number;
+  hospedagem: number;
+  limpeza: number;
+  uberTaxi: number;
+  tarifas: number;
+  outras: number;
+  provisaoTBOGrossi: number;
+  provisaoTBOShimada: number;
+  observacoes: string;
+}
+
+function getRealFlightData(): RealFlightEntry[] {
+  return [
+    // Abastecimentos iniciais (sem voo)
+    {
+      voo: '',
+      subVoo: '',
+      data: '2024-09-12',
+      grupo: 'grossi',
+      origem: 'Sorocaba',
+      destino: 'Sorocaba',
+      tempoAcionamento: '',
+      tempoVoo: '',
+      combustivelInicial: 424,
+      abastecimentoLibras: 919,
+      abastecimentoLitros: 522,
+      localAbastecimento: 'Sorocaba',
+      combustivelDecolagem: 1343,
+      combustivelConsumidoLibras: 0,
+      combustivelConsumidoLitros: 0,
+      combustivelFinal: 1343,
+      valorCombustivel: 4212.54,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 0,
+      provisaoTBOShimada: 0,
+      observacoes: 'Abastecimento em Sorocaba 522 lt x 8,07 = R$ 4.212,54 conf. NF 14424 de Petrojet',
+    },
+    {
+      voo: '',
+      subVoo: '',
+      data: '2024-09-30',
+      grupo: 'grossi',
+      origem: 'Sorocaba',
+      destino: 'Sorocaba',
+      tempoAcionamento: '',
+      tempoVoo: '',
+      combustivelInicial: 1343,
+      abastecimentoLibras: 1227,
+      abastecimentoLitros: 697,
+      localAbastecimento: 'Sorocaba',
+      combustivelDecolagem: 2570,
+      combustivelConsumidoLibras: 0,
+      combustivelConsumidoLitros: 0,
+      combustivelFinal: 2570,
+      valorCombustivel: 5359.93,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 0,
+      provisaoTBOShimada: 0,
+      observacoes: 'Abastecimento em Sorocaba 697 lt x 7,69 = R$ 5.359,93 conf. NF 14571 de Petrojet',
+    },
+    // GSS0001 - Sorocaba → Patrocínio
+    {
+      voo: 'GSS0001',
+      subVoo: 'GSS-0001',
+      data: '2024-09-26',
+      grupo: 'grossi',
+      origem: 'Sorocaba',
+      destino: 'Patrocínio',
+      tempoAcionamento: '01:30',
+      tempoVoo: '01:15',
+      combustivelInicial: 2570,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 2570,
+      combustivelConsumidoLibras: 600,
+      combustivelConsumidoLitros: 340,
+      combustivelFinal: 1970,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 696.80,
+      outras: 0,
+      provisaoTBOGrossi: 3500.00,
+      provisaoTBOShimada: 0,
+      observacoes: 'Tarifas aeronáuticas conf. Fatura 5374038 da Infraero',
+    },
+    // GSS0002 - Patrocínio → Patos
+    {
+      voo: 'GSS0002',
+      subVoo: 'GSS-0001',
+      data: '2024-09-26',
+      grupo: 'grossi',
+      origem: 'Patrocínio',
+      destino: 'Patos',
+      tempoAcionamento: '00:20',
+      tempoVoo: '00:10',
+      combustivelInicial: 1970,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1970,
+      combustivelConsumidoLibras: 170,
+      combustivelConsumidoLitros: 96,
+      combustivelFinal: 1800,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 21.53,
+      provisaoTBOGrossi: 466.67,
+      provisaoTBOShimada: 0,
+      observacoes: 'Taxa DECEA de R$ 21,53 conf. DOC 4837363 de DECEA',
+    },
+    // GSS0003 - Patos → Patrocínio
+    {
+      voo: 'GSS0003',
+      subVoo: 'GSS-0002',
+      data: '2024-10-02',
+      grupo: 'grossi',
+      origem: 'Patos',
+      destino: 'Patrocínio',
+      tempoAcionamento: '00:22',
+      tempoVoo: '00:10',
+      combustivelInicial: 1800,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1800,
+      combustivelConsumidoLibras: 150,
+      combustivelConsumidoLitros: 85,
+      combustivelFinal: 1650,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 466.67,
+      provisaoTBOShimada: 0,
+      observacoes: '',
+    },
+    // GSS0004 - Patrocínio → Montes Claros
+    {
+      voo: 'GSS0004',
+      subVoo: 'GSS-0002',
+      data: '2024-10-02',
+      grupo: 'grossi',
+      origem: 'Patrocínio',
+      destino: 'Montes Claros',
+      tempoAcionamento: '01:13',
+      tempoVoo: '01:01',
+      combustivelInicial: 1650,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1650,
+      combustivelConsumidoLibras: 700,
+      combustivelConsumidoLitros: 397,
+      combustivelFinal: 950,
+      valorCombustivel: 0,
+      hangar: 1239.27,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 187.47,
+      provisaoTBOGrossi: 2846.67,
+      provisaoTBOShimada: 0,
+      observacoes: 'Taxas do Decea de comunicação, Hangar 1.239,27 parte da NFS 1568 de Bloco de onze aeroportos',
+    },
+    // GSS0005 - Montes Claros → Patrocínio
+    {
+      voo: 'GSS0005',
+      subVoo: 'GSS-0002',
+      data: '2024-10-03',
+      grupo: 'grossi',
+      origem: 'Montes Claros',
+      destino: 'Patrocínio',
+      tempoAcionamento: '01:33',
+      tempoVoo: '01:17',
+      combustivelInicial: 950,
+      abastecimentoLibras: 700,
+      abastecimentoLitros: 400,
+      localAbastecimento: 'Montes Claros',
+      combustivelDecolagem: 1650,
+      combustivelConsumidoLibras: 850,
+      combustivelConsumidoLitros: 482,
+      combustivelFinal: 800,
+      valorCombustivel: 4100.00,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 3593.33,
+      provisaoTBOShimada: 0,
+      observacoes: 'Abastecimento em Montes Claros 400 lt x 10,25 - R$ 4.100,00 NF 3488 de Saraiva',
+    },
+    // GSS0006 - Patrocínio → Patos
+    {
+      voo: 'GSS0006',
+      subVoo: 'GSS-0002',
+      data: '2024-10-03',
+      grupo: 'grossi',
+      origem: 'Patrocínio',
+      destino: 'Patos',
+      tempoAcionamento: '00:22',
+      tempoVoo: '00:12',
+      combustivelInicial: 800,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 800,
+      combustivelConsumidoLibras: 150,
+      combustivelConsumidoLitros: 85,
+      combustivelFinal: 650,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 560.00,
+      provisaoTBOShimada: 0,
+      observacoes: 'Lembrando que o Consumo é estimado, os marcadores de combustível não são 100% confiáveis.',
+    },
+    // GSS0007 - Patos → Araxá (Grossi e Shimada)
+    {
+      voo: 'GSS0007',
+      subVoo: 'GSS-0003',
+      data: '2024-10-08',
+      grupo: 'grossi_shimada',
+      origem: 'Patos',
+      destino: 'Araxá',
+      tempoAcionamento: '00:32',
+      tempoVoo: '00:20',
+      combustivelInicial: 614,
+      abastecimentoLibras: 1056,
+      abastecimentoLitros: 600,
+      localAbastecimento: 'Patos',
+      combustivelDecolagem: 1670,
+      combustivelConsumidoLibras: 240,
+      combustivelConsumidoLitros: 136,
+      combustivelFinal: 1430,
+      valorCombustivel: 3512.34,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 209.45,
+      provisaoTBOGrossi: 466.67,
+      provisaoTBOShimada: 466.67,
+      observacoes: 'Taxas do Decea de comunicação, Abastecimentos 600,4 lt x 5,85 = R$ 3.512,34 ACAAP',
+    },
+    // GSS0008 - Araxá → Patos (Grossi e Shimada)
+    {
+      voo: 'GSS0008',
+      subVoo: 'GSS-0003',
+      data: '2024-10-08',
+      grupo: 'grossi_shimada',
+      origem: 'Araxá',
+      destino: 'Patos',
+      tempoAcionamento: '00:32',
+      tempoVoo: '00:19',
+      combustivelInicial: 1430,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1430,
+      combustivelConsumidoLibras: 230,
+      combustivelConsumidoLitros: 130,
+      combustivelFinal: 1200,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 341.12,
+      provisaoTBOGrossi: 443.33,
+      provisaoTBOShimada: 443.33,
+      observacoes: 'Tarifas aeronáuticas conf. Fatura 5378624 da Infraero',
+    },
+    // GSS0009 - Patos → Patrocínio
+    {
+      voo: 'GSS0009',
+      subVoo: 'GSS-0004',
+      data: '2024-10-16',
+      grupo: 'grossi',
+      origem: 'Patos',
+      destino: 'Patrocínio',
+      tempoAcionamento: '00:24',
+      tempoVoo: '00:12',
+      combustivelInicial: 1200,
+      abastecimentoLibras: 1000,
+      abastecimentoLitros: 571,
+      localAbastecimento: 'Patos',
+      combustivelDecolagem: 2200,
+      combustivelConsumidoLibras: 150,
+      combustivelConsumidoLitros: 85,
+      combustivelFinal: 2050,
+      valorCombustivel: 3138.30,
+      hangar: 1025.42,
+      alimentacao: 65.17,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 560.00,
+      provisaoTBOShimada: 0,
+      observacoes: 'Abastecimento Patos 570,6 x 5,50 = R$ 3.138,30',
+    },
+    // GSS0010 - Patrocínio → Goiânia
+    {
+      voo: 'GSS0010',
+      subVoo: 'GSS-0004',
+      data: '2024-10-16',
+      grupo: 'grossi',
+      origem: 'Patrocínio',
+      destino: 'Goiânia',
+      tempoAcionamento: '01:03',
+      tempoVoo: '00:50',
+      combustivelInicial: 2050,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 2050,
+      combustivelConsumidoLibras: 450,
+      combustivelConsumidoLitros: 255,
+      combustivelFinal: 1600,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 105.14,
+      limpeza: 263.00,
+      uberTaxi: 0,
+      tarifas: 460.91,
+      outras: 0,
+      provisaoTBOGrossi: 2333.33,
+      provisaoTBOShimada: 0,
+      observacoes: 'Taxas do Decea de comunicação, Operação de pouco Conf. NFS 18845 Concessionaria do bloco central',
+    },
+    // GSS0011 - Goiânia → Patrocínio
+    {
+      voo: 'GSS0011',
+      subVoo: 'GSS-0004',
+      data: '2024-10-17',
+      grupo: 'grossi',
+      origem: 'Goiânia',
+      destino: 'Patrocínio',
+      tempoAcionamento: '00:54',
+      tempoVoo: '00:54',
+      combustivelInicial: 1600,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1600,
+      combustivelConsumidoLibras: 500,
+      combustivelConsumidoLitros: 283,
+      combustivelFinal: 1100,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 2520.00,
+      provisaoTBOShimada: 0,
+      observacoes: '',
+    },
+    // GSS0012 - Patrocínio → Patos
+    {
+      voo: 'GSS0012',
+      subVoo: 'GSS-0004',
+      data: '2024-10-17',
+      grupo: 'grossi',
+      origem: 'Patrocínio',
+      destino: 'Patos',
+      tempoAcionamento: '00:23',
+      tempoVoo: '00:12',
+      combustivelInicial: 1100,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1100,
+      combustivelConsumidoLibras: 150,
+      combustivelConsumidoLitros: 85,
+      combustivelFinal: 950,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 560.00,
+      provisaoTBOShimada: 0,
+      observacoes: '',
+    },
+    // GSS0013 - Patos → Goiânia
+    {
+      voo: 'GSS0013',
+      subVoo: 'GSS-0004',
+      data: '2024-10-17',
+      grupo: 'grossi',
+      origem: 'Patos',
+      destino: 'Goiânia',
+      tempoAcionamento: '01:10',
+      tempoVoo: '00:54',
+      combustivelInicial: 950,
+      abastecimentoLibras: 1503,
+      abastecimentoLitros: 854,
+      localAbastecimento: 'Patos',
+      combustivelDecolagem: 2450,
+      combustivelConsumidoLibras: 550,
+      combustivelConsumidoLitros: 312,
+      combustivelFinal: 1900,
+      valorCombustivel: 4697.55,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 460.91,
+      outras: 0,
+      provisaoTBOGrossi: 2520.00,
+      provisaoTBOShimada: 0,
+      observacoes: 'Taxas do Decea de comunicação, Abastecimento Patos 854,1 x 5,50 = R$ 4.697,55',
+    },
+    // GSS0014 - Goiânia → Patos
+    {
+      voo: 'GSS0014',
+      subVoo: 'GSS-0004',
+      data: '2024-10-17',
+      grupo: 'grossi',
+      origem: 'Goiânia',
+      destino: 'Patos',
+      tempoAcionamento: '01:14',
+      tempoVoo: '01:00',
+      combustivelInicial: 1900,
+      abastecimentoLibras: 0,
+      abastecimentoLitros: 0,
+      localAbastecimento: '',
+      combustivelDecolagem: 1900,
+      combustivelConsumidoLibras: 600,
+      combustivelConsumidoLitros: 340,
+      combustivelFinal: 1300,
+      valorCombustivel: 0,
+      hangar: 0,
+      alimentacao: 0,
+      hospedagem: 0,
+      limpeza: 0,
+      uberTaxi: 0,
+      tarifas: 0,
+      outras: 0,
+      provisaoTBOGrossi: 2800.00,
+      provisaoTBOShimada: 0,
+      observacoes: '',
+    },
+  ];
+}
 
 // ============================================
 // AEROPORTOS PADRÃO (Brasil)
