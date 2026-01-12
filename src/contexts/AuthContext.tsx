@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Inicializar dados de exemplo e fazer login automático
-    storage.initializeWithSampleData();
+    // Inicializar apenas com usuário admin básico (sem dados de exemplo)
+    storage.initializeBasicAdmin();
     
     // Tentar carregar usuário salvo ou fazer login automático como admin
     let currentUser = storage.getCurrentUser();

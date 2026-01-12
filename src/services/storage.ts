@@ -2275,6 +2275,31 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
   },
 
   // ==========================================
+  // INICIALIZAÇÃO BÁSICA (SEM DADOS DE EXEMPLO)
+  // ==========================================
+  
+  initializeBasicAdmin: (): void => {
+    // Verificar se já existe usuário admin
+    const users = storage.getUsers();
+    if (users.length > 0) return;
+    
+    // Criar apenas usuário admin básico
+    const admin: User = {
+      id: generateId(),
+      email: 'admin@aerogestao.com',
+      nome: 'Administrador',
+      telefone: '',
+      role: 'admin',
+      horasTotais: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      active: true,
+    };
+    
+    storage.saveUser(admin, 'system', 'Sistema');
+  },
+
+  // ==========================================
   // INICIALIZAÇÃO COM DADOS DE EXEMPLO
   // ==========================================
   
