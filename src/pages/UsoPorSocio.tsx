@@ -32,10 +32,9 @@ import Select from '../components/Select';
 import Input from '../components/Input';
 import Table from '../components/Table';
 import Badge from '../components/Badge';
-import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
-import { UsageReport, MemberUsageStats } from '../types';
+import { UsageReport } from '../types';
 import { formatHours, formatCurrency, formatDate } from '../utils/format';
 import './UsoPorSocio.css';
 
@@ -78,7 +77,6 @@ const getDatesForPeriod = (period: PeriodType): { start: string; end: string } =
 };
 
 export default function UsoPorSocio() {
-  const { user, permissions } = useAuth();
   const { selectedAircraft } = useAircraft();
 
   // Estados de filtro

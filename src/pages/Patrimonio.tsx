@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
-  Plus, Edit, Trash2, Building2, PiggyBank, TrendingUp, Users, 
-  AlertTriangle, Shield, DollarSign, FileText, Percent, Calendar,
+  Plus, Edit, Trash2, Building2, TrendingUp, Users, 
+  AlertTriangle, Shield, DollarSign, FileText, Percent,
   ArrowUpRight, ArrowDownRight, Wallet, BarChart3
 } from 'lucide-react';
 import Card from '../components/Card';
@@ -54,7 +54,7 @@ const movementTypes = [
 ];
 
 export default function Patrimonio() {
-  const { user, permissions } = useAuth();
+  const { user } = useAuth();
   const { selectedAircraft } = useAircraft();
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'reserva_margem' | 'ativos' | 'participacao'>('visao_geral');
   
@@ -331,7 +331,7 @@ export default function Patrimonio() {
                       cy="50%"
                       innerRadius={50}
                       outerRadius={80}
-                      label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                     >
                       {patrimonioData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

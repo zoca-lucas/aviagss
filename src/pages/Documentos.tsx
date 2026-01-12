@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, FileText, AlertTriangle, CheckCircle, Clock, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';

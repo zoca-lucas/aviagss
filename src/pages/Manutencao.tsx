@@ -11,7 +11,6 @@ import {
   Settings,
   History,
   Filter,
-  Download,
   Package,
   RefreshCw,
   Eye,

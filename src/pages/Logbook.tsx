@@ -6,12 +6,12 @@ import Modal from '../components/Modal';
 import Input from '../components/Input';
 import Select from '../components/Select';
 import Table from '../components/Table';
-import Badge from '../components/Badge';
+// import Badge from '../components/Badge';
 import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
 import { Flight, User } from '../types';
-import { formatDate, formatHours, formatCurrency } from '../utils/format';
+import { formatDate, formatHours } from '../utils/format';
 import './Logbook.css';
 
 const initialFlight: Partial<Flight> = {

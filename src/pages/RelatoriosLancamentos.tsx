@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  BarChart3,
   Download,
   Filter,
   Plane,
@@ -28,7 +27,6 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Select from '../components/Select';
-import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
 import { FlightEntry, TBOProvision } from '../types';
@@ -42,8 +40,6 @@ const grupoOptions = [
   { value: 'grossi_shimada', label: 'Grossi e Shimada' },
   { value: 'outros', label: 'Outros' },
 ];
-
-const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7', '#ef4444', '#06b6d4'];
 
 export default function RelatoriosLancamentos() {
   const { selectedAircraft } = useAircraft();

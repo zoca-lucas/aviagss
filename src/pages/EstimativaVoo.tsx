@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigation, Plane, Clock, Fuel, DollarSign, Save, ArrowRight, Plus, Trash2, MapPin, Wind } from 'lucide-react';
+import { Navigation, Plane, Clock, Fuel, Save, ArrowRight, MapPin, Wind } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -8,7 +8,7 @@ import Select from '../components/Select';
 import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
-import { FlightEstimate, Airport, EstimateLeg } from '../types';
+import { FlightEstimate, Airport } from '../types';
 import { formatCurrency, formatHours, formatDistance, formatFuel, calculateDistance } from '../utils/format';
 import './EstimativaVoo.css';
 
@@ -17,7 +17,6 @@ export default function EstimativaVoo() {
   const { selectedAircraft } = useAircraft();
   const [airports, setAirports] = useState<Airport[]>([]);
   const [estimate, setEstimate] = useState<Partial<FlightEstimate>>({});
-  const [legs, setLegs] = useState<EstimateLeg[]>([]);
   const [calculated, setCalculated] = useState(false);
   const [savedEstimates, setSavedEstimates] = useState<FlightEstimate[]>([]);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -28,14 +27,6 @@ export default function EstimativaVoo() {
       setSavedEstimates(storage.getFlightEstimates(selectedAircraft.id));
     }
   }, [selectedAircraft]);
-
-  const handleAddLeg = () => {
-    setLegs([...legs, { origem: '', origemIcao: '', destino: '', destinoIcao: '', distancia: 0, tempoEstimado: 0, combustivel: 0 }]);
-  };
-
-  const handleRemoveLeg = (index: number) => {
-    setLegs(legs.filter((_, i) => i !== index));
-  };
 
   const handleCalculate = () => {
     if (!selectedAircraft || !estimate.origemIcao || !estimate.destinoIcao) return;

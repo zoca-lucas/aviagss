@@ -3,7 +3,7 @@ import './Table.css';
 
 interface Column<T> {
   key: string;
-  header: string;
+  header: string | ReactNode;
   render?: (item: T) => ReactNode;
   width?: string;
   align?: 'left' | 'center' | 'right';

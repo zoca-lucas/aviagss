@@ -491,7 +491,7 @@ function getLast6MonthsData(items: (Flight | Expense)[], field: 'tempoVoo' | 'va
         const itemDate = new Date('data' in item ? item.data : '');
         return itemDate.getFullYear() === year && itemDate.getMonth() === month;
       })
-      .reduce((sum, item) => sum + ((item as Record<string, number>)[field] || 0), 0);
+      .reduce((sum, item) => sum + ((item as unknown as Record<string, number>)[field] || 0), 0);
 
     months.push({ month: monthKey, value });
   }

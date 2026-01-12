@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
 import { Aircraft, AircraftComponent } from '../types';
-import { formatCurrency, formatHours, getAircraftTypeLabel, getFuelTypeLabel } from '../utils/format';
+import { formatHours, getAircraftTypeLabel, getFuelTypeLabel } from '../utils/format';
 import './Aeronaves.css';
 
 const tiposAeronave = [

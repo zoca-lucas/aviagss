@@ -10,7 +10,7 @@ import { formatDateTime, formatCurrency } from '../utils/format';
 import './Configuracoes.css';
 
 export default function Configuracoes() {
-  const { user, permissions } = useAuth();
+  const { permissions } = useAuth();
   const [config, setConfig] = useState<SystemConfig>(storage.getConfig());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [saved, setSaved] = useState(false);

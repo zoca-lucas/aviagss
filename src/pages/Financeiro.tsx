@@ -42,7 +42,7 @@ export default function Financeiro() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Partial<Expense>>({});
   const [reserve, setReserve] = useState<MarginReserve | null>(null);
-  const [dashboard, setDashboard] = useState<FinancialDashboard | null>(null);
+  const [_dashboard, _setDashboard] = useState<FinancialDashboard | null>(null);
 
   useEffect(() => {
     if (selectedAircraft) {
@@ -63,7 +63,7 @@ export default function Financeiro() {
       reserveData = storage.initializeMarginReserve(selectedAircraft.id, user.id, user.nome);
     }
     setReserve(reserveData || null);
-    setDashboard(storage.getFinancialDashboard(selectedAircraft.id));
+    _setDashboard(storage.getFinancialDashboard(selectedAircraft.id));
   };
 
   const handleSaveExpense = () => {

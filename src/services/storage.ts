@@ -26,11 +26,9 @@ import {
   // Novas interfaces para Reserva de Margem e Ativos
   MarginReserve,
   MarginReserveMovement,
-  MarginReserveMovementType,
   FinancialRiskStatus,
   AircraftAsset,
   AssetInvestment,
-  AssetShareholding,
   FinancialDashboard,
   LiquidityAlert,
 } from '../types';
@@ -234,7 +232,6 @@ export const storage = {
 
   // Calcular status de uma peça baseado nas horas da aeronave
   calculatePartStatus: (part: AircraftPart, horasAeronave: number): { status: PartStatus; horasDesdeUltimaTroca: number; horasRestantes: number; diasRestantes?: number } => {
-    const config = storage.getConfig();
     const alertaPercentual = part.alertaPercentual || 10;
     
     // Cálculo por horas
@@ -774,16 +771,10 @@ export const storage = {
     if (!aircraft) return;
     
     const schedules = storage.getMaintenanceSchedules(aircraftId);
-    const components = storage.getComponents(aircraftId);
     
     schedules.forEach(schedule => {
       if (schedule.trigger === 'horas' && schedule.intervaloHoras) {
-        const component = schedule.componentId 
-          ? components.find(c => c.id === schedule.componentId)
-          : null;
-        
-        const horasAtuais = component ? component.horasAtuais : aircraft.horasCelula;
-        const ultimaExecucaoHoras = schedule.ultimaExecucao 
+const ultimaExecucaoHoras = schedule.ultimaExecucao 
           ? storage.getMaintenanceEvents(aircraftId)
               .filter(e => e.data === schedule.ultimaExecucao)
               .reduce((max, e) => Math.max(max, e.horasAeronave), 0)
@@ -839,7 +830,7 @@ export const storage = {
     createAuditLog(userId, userName, 'delete', 'expense', id, []);
   },
 
-  createExpenseRateio: (expense: Expense, userId: string, userName: string): void => {
+  createExpenseRateio: (expense: Expense, _userId: string, _userName: string): void => {
     const memberships = storage.getMemberships(expense.aircraftId).filter(m => m.status === 'ativo');
     if (memberships.length === 0) return;
     
@@ -2348,8 +2339,8 @@ export const storage = {
       baseHangar: 'SDCO', // Sorocaba
       consumoMedio: 340, // lbs/h (convertido para litros ~190 L/h)
       velocidadeCruzeiro: 260,
-      tipoCombustivel: 'jeta',
-      unidadeCombustivel: 'libras',
+      tipoCombustivel: 'jet-a',
+      unidadeCombustivel: 'litros',
       horasCelula: 1250,
       ciclosTotais: 2100,
       custoHora: 2800,
@@ -2505,7 +2496,7 @@ export const storage = {
         combustivelConsumido: entry.combustivelConsumidoLibras,
         combustivelConsumidoLitros: entry.combustivelConsumidoLitros,
         combustivelFinal: entry.combustivelFinal,
-        tipoMedicaoCombustivel: 'libras',
+        tipoMedicaoCombustivel: 'estimado',
         
         valorCombustivel: entry.valorCombustivel,
         hangar: entry.hangar,
@@ -2547,7 +2538,7 @@ export const storage = {
       dataValidade: '2025-01-15',
       observacoes: 'Renovar junto com inspeção anual',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdBy: admin.id,
     };
     storage.saveDocument(docAeronavegabilidade, admin.id, admin.nome);
     
@@ -2561,7 +2552,7 @@ export const storage = {
       dataValidade: '2025-06-01',
       observacoes: 'Valor segurado: R$ 3.500.000,00',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdBy: admin.id,
     };
     storage.saveDocument(docSeguro, admin.id, admin.nome);
     
@@ -2569,10 +2560,16 @@ export const storage = {
     const marginReserve: MarginReserve = {
       id: generateId(),
       aircraftId: aircraft.id,
-      valorMinimo: 200000,
+      valorMinimoObrigatorio: 200000,
       saldoAtual: 180000, // Abaixo do mínimo para mostrar alerta
       status: 'atencao',
+      excedente: -20000, // 180000 - 200000
+      percentualPreenchimento: 90, // (180000 / 200000) * 100
+      diasAbaixoMinimo: 0,
+      saldoMedio30Dias: 180000,
       ultimaAtualizacao: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     setItem(STORAGE_KEYS.MARGIN_RESERVES, [marginReserve]);
     
@@ -2583,11 +2580,14 @@ export const storage = {
       nome: 'Hangar Próprio - Base Patos de Minas',
       tipo: 'imobilizado',
       status: 'em_construcao',
-      dataInicio: '2024-03-01',
-      valorInvestido: 450000,
+      descricao: 'Construção do hangar próprio na base de Patos de Minas. Previsão de conclusão: Junho/2025.',
+      dataInicioObra: '2024-03-01',
       valorEstimadoTotal: 800000,
-      observacoes: 'Construção do hangar próprio na base de Patos de Minas. Previsão de conclusão: Junho/2025.',
+      valorInvestidoAtual: 450000,
+      percentualExecucao: 56.25, // (450000 / 800000) * 100
+      participacaoSocios: [],
       createdAt: new Date().toISOString(),
+      createdBy: admin.id,
       updatedAt: new Date().toISOString(),
     };
     setItem(STORAGE_KEYS.AIRCRAFT_ASSETS, [hangarAsset]);

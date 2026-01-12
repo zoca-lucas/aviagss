@@ -19,6 +19,12 @@
   font-size: 0.75rem;
 }
 
+.badge-lg {
+  height: 32px;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+}
+
 .badge-default {
   background: var(--bg-hover);
   color: var(--text-secondary);

@@ -4,7 +4,7 @@ import './Badge.css';
 interface BadgeProps {
   children: ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export default function Badge({ children, variant = 'default', size = 'md' }: BadgeProps) {
