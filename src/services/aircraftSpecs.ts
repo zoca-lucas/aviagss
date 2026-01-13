@@ -80,8 +80,8 @@ class AircraftSpecsService {
       }
     }
 
-    // 3. Se ainda faltam dados críticos, usa ML/heurística
-    if (specs && !specs.isComplete) {
+    // 3. Se ainda faltam dados críticos ou não encontrou nada, usa ML/heurística
+    if (!specs || !specs.isComplete) {
       const estimated = this.estimateMissingSpecs(specs, manufacturer, model, variant, year);
       specs = this.mergeSpecs(specs, estimated);
     }
