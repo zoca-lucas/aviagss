@@ -9,16 +9,6 @@ import type {
   Flight,
   Expense,
   Revenue,
-  BankAccount,
-  Payment,
-  MaintenanceEvent,
-  MaintenanceSchedule,
-  Document,
-  FlightEstimate,
-  CashInvestment,
-  Membership,
-  AuditLog,
-  FlightEntry,
 } from '../types';
 import { storage } from './storage'; // Fallback para localStorage
 import { supabase } from './supabase';
