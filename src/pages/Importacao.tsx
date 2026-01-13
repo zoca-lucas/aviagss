@@ -29,22 +29,35 @@ export default function Importacao() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
+    console.log('Arquivo selecionado:', selectedFile.name);
     setFile(selectedFile);
     setImportResult(null);
+    setPreview(null); // Limpar preview anterior
 
     // Fazer preview
     try {
+      console.log('Gerando preview...');
       const previewData = await spreadsheetImporter.previewSpreadsheet(selectedFile, 10);
+      console.log('Preview gerado:', previewData);
       setPreview(previewData);
     } catch (error: any) {
+      console.error('Erro ao gerar preview:', error);
       alert(`Erro ao ler arquivo: ${error.message}`);
       setFile(null);
+      setPreview(null);
     }
   };
 
   const handleImport = async () => {
+    console.log('handleImport chamado', { file, user, selectedAircraft, preview });
+    
     if (!file || !user || !selectedAircraft) {
       alert('Selecione um arquivo e uma aeronave');
+      return;
+    }
+
+    if (!preview) {
+      alert('Erro: Preview dos dados não disponível. Tente selecionar o arquivo novamente.');
       return;
     }
 
@@ -52,6 +65,7 @@ export default function Importacao() {
     setImportResult(null);
 
     try {
+      console.log('Iniciando importação...', importOptions);
       const result = await spreadsheetImporter.importSpreadsheet(
         file,
         selectedAircraft.id,
@@ -59,21 +73,27 @@ export default function Importacao() {
         importOptions
       );
 
+      console.log('Resultado da importação:', result);
       setImportResult(result);
       
       if (result.success) {
+        alert(`Importação concluída!\n\nVoos: ${result.imported.flights}\nDespesas: ${result.imported.expenses}\nReceitas: ${result.imported.revenues}`);
         // Recarregar dados
         setTimeout(() => {
           window.location.reload(); // Recarrega para atualizar todos os módulos
         }, 2000);
+      } else {
+        alert(`Erro na importação:\n${result.errors.join('\n')}`);
       }
     } catch (error: any) {
+      console.error('Erro ao importar:', error);
       setImportResult({
         success: false,
         imported: { flights: 0, expenses: 0, revenues: 0 },
-        errors: [error.message],
+        errors: [error.message || 'Erro desconhecido ao importar'],
         warnings: [],
       });
+      alert(`Erro ao importar: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
@@ -362,8 +382,13 @@ export default function Importacao() {
               Cancelar
             </Button>
             <Button
-              onClick={handleImport}
-              disabled={loading || !preview}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Botão clicado!', { loading, preview, file, user, selectedAircraft });
+                handleImport();
+              }}
+              disabled={loading}
               icon={loading ? <Loader2 size={18} className="spinning" /> : <Upload size={18} />}
             >
               {loading ? 'Importando...' : 'Importar Dados'}
