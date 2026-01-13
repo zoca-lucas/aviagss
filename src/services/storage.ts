@@ -1390,12 +1390,24 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
 
   saveFlightEstimate: (estimate: FlightEstimate, userId: string, userName: string): FlightEstimate => {
     const estimates = getItem<FlightEstimate[]>(STORAGE_KEYS.FLIGHT_ESTIMATES, []);
-    estimate.id = estimate.id || generateId();
-    estimate.createdAt = new Date().toISOString();
-    estimate.criadoPor = userId;
-    estimates.push(estimate);
-    setItem(STORAGE_KEYS.FLIGHT_ESTIMATES, estimates);
-    createAuditLog(userId, userName, 'create', 'flight_estimate', estimate.id, []);
+    const existing = estimates.find(e => e.id === estimate.id);
+    
+    if (existing) {
+      // Atualizar estimativa existente
+      const changes = getChanges(existing, estimate);
+      const index = estimates.findIndex(e => e.id === estimate.id);
+      estimates[index] = { ...estimate };
+      setItem(STORAGE_KEYS.FLIGHT_ESTIMATES, estimates);
+      createAuditLog(userId, userName, 'update', 'flight_estimate', estimate.id, changes);
+    } else {
+      // Criar nova estimativa
+      estimate.id = estimate.id || generateId();
+      estimate.createdAt = new Date().toISOString();
+      estimate.criadoPor = userId;
+      estimates.push(estimate);
+      setItem(STORAGE_KEYS.FLIGHT_ESTIMATES, estimates);
+      createAuditLog(userId, userName, 'create', 'flight_estimate', estimate.id, []);
+    }
     return estimate;
   },
 

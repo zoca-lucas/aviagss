@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Navigation, Plane, Clock, Fuel, Save, ArrowRight, 
-  Loader2, AlertTriangle, CheckCircle2, Sparkles, Users
+  Loader2, AlertTriangle, CheckCircle2, Sparkles, Users, Edit2
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -25,6 +25,13 @@ export default function EstimativaVoo() {
   const [loading, setLoading] = useState(false);
   const [savedEstimates, setSavedEstimates] = useState<EnhancedFlightEstimate[]>([]);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [editingCosts, setEditingCosts] = useState(false);
+  const [editedCosts, setEditedCosts] = useState<{
+    fuel: number;
+    landingFee: number;
+    parkingFee: number;
+    operational: number;
+  } | null>(null);
   
   // Estados simplificados - campos principais + combustível
   const [originAirport, setOriginAirport] = useState<AirportRecord | null>(null);
@@ -65,6 +72,15 @@ export default function EstimativaVoo() {
       enhanced.criadoPor = user?.id || '';
       setEstimate(enhanced);
       setCalculated(true);
+      // Inicializar custos editados com os valores calculados
+      if (enhanced.costBreakdown) {
+        setEditedCosts({
+          fuel: enhanced.costBreakdown.fuel,
+          landingFee: enhanced.costBreakdown.landingFee,
+          parkingFee: enhanced.costBreakdown.parkingFee,
+          operational: enhanced.costBreakdown.operational,
+        });
+      }
     } catch (error: any) {
       alert(`Erro ao calcular: ${error.message}`);
       console.error('Erro ao calcular estimativa:', error);
@@ -76,17 +92,75 @@ export default function EstimativaVoo() {
   const handleSave = () => {
     if (!user || !selectedAircraft || !calculated || !estimate.id) return;
 
-    const flightEstimate: EnhancedFlightEstimate = estimate as EnhancedFlightEstimate;
+    // Aplicar custos editados se houver
+    let flightEstimate: EnhancedFlightEstimate = { ...estimate } as EnhancedFlightEstimate;
+    if (editedCosts && flightEstimate.costBreakdown) {
+      const newTotal = editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational;
+      flightEstimate.costBreakdown = {
+        ...flightEstimate.costBreakdown,
+        ...editedCosts,
+        total: newTotal,
+      };
+      // Recalcular métricas
+      if (flightEstimate.tempoTotal) {
+        flightEstimate.costPerHour = newTotal / flightEstimate.tempoTotal;
+      }
+      if (flightEstimate.distanciaTotal) {
+        flightEstimate.costPerNM = newTotal / flightEstimate.distanciaTotal;
+      }
+    }
+
     storage.saveFlightEstimate(flightEstimate as any, user.id, user.nome);
     setSavedEstimates(storage.getFlightEstimates(selectedAircraft.id) as EnhancedFlightEstimate[]);
+    setEstimate(flightEstimate);
     alert('Estimativa salva com sucesso!');
   };
 
   const handleConvertToFlight = () => {
-    if (!user || !estimate.id) return;
+    if (!user || !selectedAircraft) {
+      alert('Selecione uma aeronave');
+      return;
+    }
+    
+    if (!calculated || !estimate.id) {
+      alert('Calcule a estimativa antes de converter em voo');
+      return;
+    }
+    
+    // Aplicar custos editados se houver antes de salvar
+    let estimateToSave: EnhancedFlightEstimate = { ...estimate } as EnhancedFlightEstimate;
+    if (editedCosts && estimateToSave.costBreakdown) {
+      const newTotal = editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational;
+      estimateToSave.costBreakdown = {
+        ...estimateToSave.costBreakdown,
+        ...editedCosts,
+        total: newTotal,
+      };
+      if (estimateToSave.tempoTotal) {
+        estimateToSave.costPerHour = newTotal / estimateToSave.tempoTotal;
+      }
+      if (estimateToSave.distanciaTotal) {
+        estimateToSave.costPerNM = newTotal / estimateToSave.distanciaTotal;
+      }
+    }
+    
+    // Garantir que a estimativa está salva antes de converter
+    estimateToSave.aircraftId = selectedAircraft.id;
+    storage.saveFlightEstimate(estimateToSave as any, user.id, user.nome);
+    
+    // Atualizar estado local
+    setEstimate(estimateToSave);
+    
+    // Converter em voo
     const flight = storage.convertEstimateToFlight(estimate.id, user.id, user.nome);
     if (flight) {
       alert('Voo criado com sucesso! Você pode editá-lo no Logbook.');
+      // Recarregar estimativas
+      setSavedEstimates(storage.getFlightEstimates(selectedAircraft.id) as EnhancedFlightEstimate[]);
+      // Marcar como convertido no estado local
+      setEstimate({ ...estimateToSave, convertidoEmVoo: true, flightId: flight.id });
+    } else {
+      alert('Erro ao converter estimativa em voo. A estimativa pode já ter sido convertida.');
     }
   };
 
@@ -400,36 +474,74 @@ export default function EstimativaVoo() {
 
               {estimate.costBreakdown && (
                 <div className="costs-section">
-                  <h4>Custos Estimados</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4>Custos Estimados</h4>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<Edit2 size={14} />}
+                      onClick={() => {
+                        setEditingCosts(true);
+                        if (editedCosts) {
+                          setEditedCosts({ ...editedCosts });
+                        } else {
+                          setEditedCosts({
+                            fuel: estimate.costBreakdown!.fuel,
+                            landingFee: estimate.costBreakdown!.landingFee,
+                            parkingFee: estimate.costBreakdown!.parkingFee,
+                            operational: estimate.costBreakdown!.operational,
+                          });
+                        }
+                      }}
+                    >
+                      Editar Custos
+                    </Button>
+                  </div>
                   <div className="costs-breakdown">
                     <div className="cost-row">
                       <span>Combustível</span>
-                      <span>{formatCurrency(estimate.costBreakdown.fuel)}</span>
+                      <span>{formatCurrency(editedCosts?.fuel ?? estimate.costBreakdown.fuel)}</span>
                     </div>
                     <div className="cost-row">
                       <span>Taxas de Pouso</span>
-                      <span>{formatCurrency(estimate.costBreakdown.landingFee)}</span>
+                      <span>{formatCurrency(editedCosts?.landingFee ?? estimate.costBreakdown.landingFee)}</span>
                     </div>
                     <div className="cost-row">
                       <span>Estacionamento</span>
-                      <span>{formatCurrency(estimate.costBreakdown.parkingFee)}</span>
+                      <span>{formatCurrency(editedCosts?.parkingFee ?? estimate.costBreakdown.parkingFee)}</span>
                     </div>
                     <div className="cost-row">
                       <span>Operacional (R$ 2.800/h)</span>
-                      <span>{formatCurrency(estimate.costBreakdown.operational)}</span>
+                      <span>{formatCurrency(editedCosts?.operational ?? estimate.costBreakdown.operational)}</span>
                     </div>
                     <div className="cost-row total">
                       <span>Total</span>
-                      <span>{formatCurrency(estimate.costBreakdown.total)}</span>
+                      <span>{formatCurrency(
+                        (editedCosts 
+                          ? editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational
+                          : estimate.costBreakdown.total)
+                      )}</span>
                     </div>
                     <div className="cost-row per-hour">
                       <span>Custo por Hora</span>
-                      <span>{formatCurrency(estimate.costPerHour || 0)}</span>
+                      <span>{formatCurrency(
+                        estimate.tempoTotal 
+                          ? ((editedCosts 
+                              ? editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational
+                              : estimate.costBreakdown.total) / estimate.tempoTotal)
+                          : (estimate.costPerHour || 0)
+                      )}</span>
                     </div>
                     {estimate.costPerNM && (
                       <div className="cost-row">
                         <span>Custo por Milha Náutica</span>
-                        <span>{formatCurrency(estimate.costPerNM)}</span>
+                        <span>{formatCurrency(
+                          estimate.distanciaTotal
+                            ? ((editedCosts 
+                                ? editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational
+                                : estimate.costBreakdown.total) / estimate.distanciaTotal)
+                            : (estimate.costPerNM || 0)
+                        )}</span>
                       </div>
                     )}
                     {estimate.efficiency && (
@@ -508,6 +620,93 @@ export default function EstimativaVoo() {
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Modal de Edição de Custos */}
+      <Modal
+        isOpen={editingCosts}
+        onClose={() => setEditingCosts(false)}
+        title="Editar Custos Estimados"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditingCosts(false)}>Cancelar</Button>
+            <Button onClick={() => {
+              if (editedCosts) {
+                // Atualizar estimativa com custos editados
+                const newTotal = editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational;
+                setEstimate({
+                  ...estimate,
+                  costBreakdown: {
+                    ...estimate.costBreakdown!,
+                    ...editedCosts,
+                    total: newTotal,
+                  },
+                  costPerHour: estimate.tempoTotal ? newTotal / estimate.tempoTotal : estimate.costPerHour,
+                  costPerNM: estimate.distanciaTotal ? newTotal / estimate.distanciaTotal : estimate.costPerNM,
+                });
+              }
+              setEditingCosts(false);
+            }}>Salvar</Button>
+          </>
+        }
+      >
+        {editedCosts && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <Input
+              label="Combustível (R$)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editedCosts.fuel.toString()}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                setEditedCosts({ ...editedCosts, fuel: value });
+              }}
+            />
+            <Input
+              label="Taxas de Pouso (R$)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editedCosts.landingFee.toString()}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                setEditedCosts({ ...editedCosts, landingFee: value });
+              }}
+            />
+            <Input
+              label="Estacionamento (R$)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editedCosts.parkingFee.toString()}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                setEditedCosts({ ...editedCosts, parkingFee: value });
+              }}
+            />
+            <Input
+              label="Operacional (R$)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editedCosts.operational.toString()}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                setEditedCosts({ ...editedCosts, operational: value });
+              }}
+            />
+            <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '0.5rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600 }}>Total:</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-color)' }}>
+                  {formatCurrency(editedCosts.fuel + editedCosts.landingFee + editedCosts.parkingFee + editedCosts.operational)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
