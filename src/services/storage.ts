@@ -29,6 +29,7 @@ import {
   MarginReserve,
   MarginReserveMovement,
   FinancialApplication,
+  CashInvestment,
   FinancialRiskStatus,
   AircraftAsset,
   AssetInvestment,
@@ -69,6 +70,7 @@ const STORAGE_KEYS = {
   MARGIN_RESERVES: 'aerogestao_margin_reserves',
   MARGIN_RESERVE_MOVEMENTS: 'aerogestao_margin_reserve_movements',
   FINANCIAL_APPLICATIONS: 'aerogestao_financial_applications',
+  CASH_INVESTMENTS: 'aerogestao_cash_investments',
   AIRCRAFT_ASSETS: 'aerogestao_aircraft_assets',
   ASSET_INVESTMENTS: 'aerogestao_asset_investments',
   LIQUIDITY_ALERTS: 'aerogestao_liquidity_alerts',
@@ -2317,6 +2319,129 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
       valorAtual: totalAplicado + totalRendimento,
       aplicacoes: applications,
     };
+  },
+
+  // ==========================================
+  // APLICAÇÕES DO CAIXA
+  // ==========================================
+
+  getCashInvestments: (aircraftId?: string, status?: CashInvestment['status']): CashInvestment[] => {
+    let investments = getItem<CashInvestment[]>(STORAGE_KEYS.CASH_INVESTMENTS, []);
+    if (aircraftId) investments = investments.filter(i => i.aircraftId === aircraftId);
+    if (status) investments = investments.filter(i => i.status === status);
+    return investments.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  },
+
+  saveCashInvestment: (investment: CashInvestment, userId: string, userName: string): CashInvestment => {
+    const investments = getItem<CashInvestment[]>(STORAGE_KEYS.CASH_INVESTMENTS, []);
+    const existing = investments.find(i => i.id === investment.id);
+    
+    // Calcular valor final estimado (será recalculado na UI se necessário)
+    // Por enquanto, usar o valor já calculado se existir, senão calcular depois
+    if (!investment.estimatedFinalValue || investment.estimatedFinalValue === 0) {
+      // Estimativa simples: VP * (1 + taxa_aproximada)
+      investment.estimatedFinalValue = investment.principal * 1.1; // Placeholder, será recalculado na UI
+    }
+    
+    if (existing) {
+      const changes = getChanges(existing, investment);
+      const index = investments.findIndex(i => i.id === investment.id);
+      investment.updatedAt = new Date().toISOString();
+      investments[index] = investment;
+      createAuditLog(userId, userName, 'update', 'cash_investment', investment.id, changes);
+    } else {
+      investment.id = investment.id || generateId();
+      investment.createdAt = new Date().toISOString();
+      investment.updatedAt = new Date().toISOString();
+      investment.userId = userId;
+      investments.push(investment);
+      createAuditLog(userId, userName, 'create', 'cash_investment', investment.id, []);
+      
+      // Se não for simulação, criar movimentações contábeis
+      if (!investment.isSimulation && investment.cashAccountId) {
+        // Criar despesa (saída do caixa)
+        const expense: Expense = {
+          id: generateId(),
+          aircraftId: investment.aircraftId,
+          categoria: 'outros',
+          tipo: 'variavel',
+          descricao: `Aplicação Financeira - ${investment.investmentType}`,
+          valor: investment.principal,
+          moeda: 'BRL',
+          data: investment.startDate,
+          contaBancariaId: investment.cashAccountId,
+          rateioAutomatico: false,
+          observacoes: `Aplicação ID: ${investment.id}`,
+          createdAt: new Date().toISOString(),
+          createdBy: userId,
+        };
+        storage.saveExpense(expense, userId, userName);
+      }
+    }
+    
+    setItem(STORAGE_KEYS.CASH_INVESTMENTS, investments);
+    return investment;
+  },
+
+  redeemCashInvestment: (investmentId: string, realizedValue: number, userId: string, userName: string): CashInvestment => {
+    const investments = getItem<CashInvestment[]>(STORAGE_KEYS.CASH_INVESTMENTS, []);
+    const investment = investments.find(i => i.id === investmentId);
+    
+    if (!investment) throw new Error('Aplicação não encontrada');
+    if (investment.status !== 'ACTIVE') throw new Error('Aplicação não está ativa');
+    
+    investment.status = 'REDEEMED';
+    investment.realizedFinalValue = realizedValue;
+    investment.redeemedAt = new Date().toISOString();
+    investment.redeemedBy = userId;
+    investment.updatedAt = new Date().toISOString();
+    
+    const index = investments.findIndex(i => i.id === investmentId);
+    investments[index] = investment;
+    setItem(STORAGE_KEYS.CASH_INVESTMENTS, investments);
+    
+    // Se não for simulação, criar receita (entrada no caixa)
+    if (!investment.isSimulation && investment.cashAccountId) {
+      const revenue: Revenue = {
+        id: generateId(),
+        aircraftId: investment.aircraftId,
+        categoria: 'aplicacao_financeira',
+        descricao: `Resgate de Aplicação - ${investment.investmentType}`,
+        valor: realizedValue,
+        moeda: 'BRL',
+        data: new Date().toISOString().split('T')[0],
+        contaBancariaId: investment.cashAccountId,
+        rateioAutomatico: false,
+        observacoes: `Resgate da aplicação ID: ${investment.id}. VP: ${investment.principal}, VF: ${realizedValue}`,
+        createdAt: new Date().toISOString(),
+        createdBy: userId,
+      };
+      storage.saveRevenue(revenue, userId, userName);
+    }
+    
+    createAuditLog(userId, userName, 'update', 'cash_investment', investmentId, [
+      { field: 'status', oldValue: 'ACTIVE', newValue: 'REDEEMED' },
+      { field: 'realizedFinalValue', oldValue: undefined, newValue: realizedValue },
+    ]);
+    
+    return investment;
+  },
+
+  deleteCashInvestment: (id: string, userId: string, userName: string): void => {
+    const investments = getItem<CashInvestment[]>(STORAGE_KEYS.CASH_INVESTMENTS, []);
+    const updatedInvestments = investments.filter(i => i.id !== id);
+    setItem(STORAGE_KEYS.CASH_INVESTMENTS, updatedInvestments);
+    createAuditLog(userId, userName, 'delete', 'cash_investment', id, []);
+  },
+
+  getAvailableCash: (aircraftId: string, accountId?: string): number => {
+    // Calcular caixa disponível: saldo das contas bancárias
+    const accounts = storage.getBankAccounts(aircraftId);
+    if (accountId) {
+      const account = accounts.find(a => a.id === accountId);
+      return account ? account.saldoAtual : 0;
+    }
+    return accounts.reduce((sum, a) => sum + a.saldoAtual, 0);
   },
 
   // ==========================================

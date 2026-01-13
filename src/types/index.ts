@@ -835,6 +835,76 @@ export interface FinancialApplication {
 }
 
 // ============================================
+// APLICAÇÕES DO CAIXA
+// ============================================
+
+export type InvestmentType = 'CDI' | 'POS_FIXADO' | 'PREFIXADO' | 'IPCA_PLUS' | 'POUPANCA' | 'SELIC' | 'CDB' | 'LCI' | 'LCA';
+export type CalculationBase = 252 | 365;
+export type CapitalizationType = 'diaria' | 'mensal';
+export type InvestmentStatus = 'ACTIVE' | 'REDEEMED' | 'CANCELED' | 'SIMULATED';
+
+export interface CashInvestment {
+  id: string;
+  aircraftId: string;
+  userId: string;
+  
+  // Dados básicos
+  principal: number; // Valor Principal (VP)
+  startDate: string; // Data de início
+  endDate: string; // Data de vencimento/resgate
+  investmentType: InvestmentType;
+  
+  // Parâmetros da aplicação (JSON)
+  params: {
+    // Para CDI
+    percentCDI?: number; // % do CDI (ex: 100, 110)
+    // Para Pós-fixado e Prefixado
+    annualRate?: number; // Taxa anual (ex: 13.25)
+    // Para IPCA+
+    ipcaExpected?: number; // IPCA esperado anual
+    ipcaReal?: number; // IPCA real do período (se disponível)
+    spread?: number; // Spread real (ex: 6)
+    // Configurações gerais
+    base: CalculationBase; // 252 ou 365
+    capitalization: CapitalizationType; // diaria ou mensal
+  };
+  
+  // Status e flags
+  isSimulation: boolean; // Se é apenas simulação (não mexe no caixa)
+  status: InvestmentStatus;
+  
+  // Valores calculados
+  estimatedFinalValue: number; // Valor Final estimado (VF)
+  realizedFinalValue?: number; // Valor Final realizado (quando resgatado)
+  
+  // Contas contábeis
+  cashAccountId?: string; // Conta de caixa de origem
+  investmentAccountId?: string; // Conta de aplicações (ativo)
+  
+  // Auditoria
+  createdAt: string;
+  updatedAt: string;
+  redeemedAt?: string;
+  redeemedBy?: string;
+  observations?: string;
+}
+
+export interface InvestmentCalculationResult {
+  principal: number;
+  finalValue: number;
+  interestEarned: number;
+  periodReturn: number; // Rentabilidade % no período
+  annualEquivalentReturn: number; // Rentabilidade anual equivalente
+  daysElapsed: number;
+  businessDaysEstimated: number;
+  calculationDetails: {
+    baseUsed: CalculationBase;
+    daysUsed: number;
+    effectiveRate: number;
+  };
+}
+
+// ============================================
 // ATIVOS PATRIMONIAIS DA AERONAVE
 // ============================================
 

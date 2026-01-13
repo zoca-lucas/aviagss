@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, TrendingDown, CreditCard, Users, AlertTriangle, Shield, ArrowRight, Building2, PieChart } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, TrendingUp, TrendingDown, CreditCard, Users, AlertTriangle, Shield, ArrowRight, Building2, PieChart, Calculator } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -11,7 +11,8 @@ import Badge from '../components/Badge';
 import { useAuth } from '../contexts/AuthContext';
 import { useAircraft } from '../contexts/AircraftContext';
 import { storage } from '../services/storage';
-import { Expense, Revenue, BankAccount, Payment, Membership, User, MarginReserve, FinancialDashboard, FinancialApplication } from '../types';
+import { Expense, Revenue, BankAccount, Payment, Membership, User, MarginReserve, FinancialDashboard, FinancialApplication, CashInvestment, InvestmentType } from '../types';
+import { calculateInvestment } from '../services/investmentCalculator';
 import { formatCurrency, formatDate, getExpenseCategoryLabel, getPaymentStatusLabel, getDaysUntil, formatPercent } from '../utils/format';
 import './Financeiro.css';
 
@@ -41,7 +42,7 @@ const tipos = [
 export default function Financeiro() {
   const { user, permissions } = useAuth();
   const { selectedAircraft } = useAircraft();
-  const [activeTab, setActiveTab] = useState<'despesas' | 'receitas' | 'contas' | 'aplicacoes' | 'pagamentos' | 'membros'>('despesas');
+  const [activeTab, setActiveTab] = useState<'despesas' | 'receitas' | 'contas' | 'aplicacoes' | 'aplicacoes-caixa' | 'pagamentos' | 'membros'>('despesas');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [revenues, setRevenues] = useState<Revenue[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -57,6 +58,11 @@ export default function Financeiro() {
   const [editingAccount, setEditingAccount] = useState<Partial<BankAccount>>({});
   const [editingApplication, setEditingApplication] = useState<Partial<FinancialApplication>>({});
   const [applications, setApplications] = useState<FinancialApplication[]>([]);
+  const [cashInvestments, setCashInvestments] = useState<CashInvestment[]>([]);
+  const [investmentModalOpen, setInvestmentModalOpen] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<Partial<CashInvestment>>({});
+  const [investmentCalculation, setInvestmentCalculation] = useState<any>(null);
+  const [allowNegativeBalance, setAllowNegativeBalance] = useState(false);
   const [reserve, setReserve] = useState<MarginReserve | null>(null);
   const [_dashboard, _setDashboard] = useState<FinancialDashboard | null>(null);
 
@@ -105,6 +111,9 @@ export default function Financeiro() {
     if (reserveData) {
       setApplications(storage.getFinancialApplications(selectedAircraft.id, reserveData.id));
     }
+    
+    // Carregar aplicações do caixa
+    setCashInvestments(storage.getCashInvestments(selectedAircraft.id));
     _setDashboard(storage.getFinancialDashboard(selectedAircraft.id));
   };
 
@@ -417,6 +426,10 @@ export default function Financeiro() {
         <button className={`tab ${activeTab === 'aplicacoes' ? 'active' : ''}`} onClick={() => setActiveTab('aplicacoes')}>
           <PieChart size={18} />
           Aplicações Financeiras
+        </button>
+        <button className={`tab ${activeTab === 'aplicacoes-caixa' ? 'active' : ''}`} onClick={() => setActiveTab('aplicacoes-caixa')}>
+          <Calculator size={18} />
+          Aplicações do Caixa
         </button>
         <button className={`tab ${activeTab === 'pagamentos' ? 'active' : ''}`} onClick={() => setActiveTab('pagamentos')}>
           <CreditCard size={18} />
@@ -766,6 +779,182 @@ export default function Financeiro() {
             data={applications}
             keyExtractor={(a) => a.id}
             emptyMessage="Nenhuma aplicação financeira registrada"
+          />
+        </Card>
+      )}
+
+      {activeTab === 'aplicacoes-caixa' && (
+        <Card>
+          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Aplicar Caixa</h3>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Aplique o dinheiro em caixa em diferentes tipos de investimento e calcule o rendimento
+              </p>
+            </div>
+            {permissions.canManageFinancial && (
+              <Button
+                icon={<Plus size={18} />}
+                onClick={() => {
+                  setEditingInvestment({
+                    principal: 0,
+                    startDate: new Date().toISOString().split('T')[0],
+                    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    investmentType: 'CDI',
+                    params: {
+                      percentCDI: 100,
+                      base: 252,
+                      capitalization: 'diaria',
+                    },
+                    isSimulation: false,
+                    status: 'ACTIVE',
+                    cashAccountId: bankAccounts[0]?.id,
+                  });
+                  setInvestmentCalculation(null);
+                  setInvestmentModalOpen(true);
+                }}
+              >
+                Nova Aplicação
+              </Button>
+            )}
+          </div>
+
+          {/* Card de Aplicar Caixa */}
+          {(() => {
+            const _availableCash = storage.getAvailableCash(selectedAircraft.id);
+            const activeInvestments = cashInvestments.filter(i => i.status === 'ACTIVE' && !i.isSimulation);
+            const totalInvested = activeInvestments.reduce((sum, i) => sum + i.principal, 0);
+            const freeCash = _availableCash - totalInvested;
+            
+            return (
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '0.5rem', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 600 }}>Caixa Disponível</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Saldo Total:</span>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                        {formatCurrency(_availableCash)}
+                      </div>
+                    </div>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Aplicado:</span>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                      {formatCurrency(totalInvested)}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Caixa Livre:</span>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 600, color: freeCash >= 0 ? 'var(--success-color)' : 'var(--danger-color)', marginTop: '0.25rem' }}>
+                      {formatCurrency(freeCash)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <Table
+            columns={[
+              { key: 'investmentType', header: 'Tipo', render: (i) => {
+                const labels: Record<InvestmentType, string> = {
+                  CDI: 'CDI',
+                  POS_FIXADO: 'Pós-fixado',
+                  PREFIXADO: 'Prefixado',
+                  IPCA_PLUS: 'IPCA+',
+                  POUPANCA: 'Poupança',
+                  SELIC: 'SELIC',
+                  CDB: 'CDB',
+                  LCI: 'LCI',
+                  LCA: 'LCA',
+                };
+                return labels[i.investmentType] || i.investmentType;
+              }},
+              { key: 'principal', header: 'Valor Aplicado', align: 'right', render: (i) => formatCurrency(i.principal) },
+              { key: 'startDate', header: 'Data Início', render: (i) => formatDate(i.startDate) },
+              { key: 'endDate', header: 'Data Fim', render: (i) => formatDate(i.endDate) },
+              { 
+                key: 'estimatedFinalValue', 
+                header: 'Valor Final Estimado', 
+                align: 'right',
+                render: (i) => {
+                  try {
+                    const calc = calculateInvestment(i);
+                    return <span style={{ fontWeight: 600 }}>{formatCurrency(calc.finalValue)}</span>;
+                  } catch {
+                    return formatCurrency(i.estimatedFinalValue);
+                  }
+                }
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                render: (i) => {
+                  const labels: Record<CashInvestment['status'], string> = {
+                    ACTIVE: 'Ativa',
+                    REDEEMED: 'Resgatada',
+                    CANCELED: 'Cancelada',
+                    SIMULATED: 'Simulação',
+                  };
+                  const variants: Record<CashInvestment['status'], 'success' | 'warning' | 'danger' | 'info'> = {
+                    ACTIVE: 'success',
+                    REDEEMED: 'info',
+                    CANCELED: 'danger',
+                    SIMULATED: 'warning',
+                  };
+                  return <Badge variant={variants[i.status]}>{labels[i.status]}</Badge>;
+                },
+              },
+              {
+                key: 'actions',
+                header: '',
+                width: '120px',
+                render: (i) =>
+                  permissions.canManageFinancial && (
+                    <div className="table-actions">
+                      <button 
+                        className="action-btn" 
+                        onClick={() => {
+                          setEditingInvestment(i);
+                          try {
+                            const calc = calculateInvestment(i);
+                            setInvestmentCalculation(calc);
+                          } catch {
+                            setInvestmentCalculation(null);
+                          }
+                          setInvestmentModalOpen(true);
+                        }}
+                        title="Ver detalhes"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      {i.status === 'ACTIVE' && !i.isSimulation && (
+                        <button 
+                          className="action-btn" 
+                          onClick={() => {
+                            try {
+                              const calc = calculateInvestment(i);
+                              const realizedValue = parseFloat(prompt(`Valor realizado no resgate:\n\nEstimado: ${formatCurrency(calc.finalValue)}\n\nDigite o valor realizado:`, calc.finalValue.toFixed(2)) || '0');
+                              if (realizedValue > 0) {
+                                storage.redeemCashInvestment(i.id, realizedValue, user!.id, user!.nome);
+                                loadData();
+                              }
+                            } catch (e: any) {
+                              alert('Erro ao calcular: ' + e.message);
+                            }
+                          }}
+                          title="Resgatar"
+                          style={{ color: 'var(--success-color)' }}
+                        >
+                          <DollarSign size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ),
+              },
+            ]}
+            data={cashInvestments}
+            keyExtractor={(i) => i.id}
+            emptyMessage="Nenhuma aplicação do caixa registrada"
           />
         </Card>
       )}
@@ -1488,6 +1677,481 @@ export default function Financeiro() {
                   </div>
                 );
               })()}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal de Aplicação do Caixa */}
+      <Modal
+        isOpen={investmentModalOpen}
+        onClose={() => {
+          setInvestmentModalOpen(false);
+          setEditingInvestment({});
+          setInvestmentCalculation(null);
+        }}
+        title={editingInvestment.id ? 'Editar Aplicação do Caixa' : 'Nova Aplicação do Caixa'}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => {
+              setInvestmentModalOpen(false);
+              setEditingInvestment({});
+              setInvestmentCalculation(null);
+            }}>Cancelar</Button>
+            <Button onClick={() => {
+              if (!user || !selectedAircraft) return;
+              
+              const availableCash = storage.getAvailableCash(selectedAircraft.id, editingInvestment.cashAccountId);
+              const principal = editingInvestment.principal || 0;
+              
+              if (!principal || principal <= 0) {
+                alert('Informe o valor a aplicar');
+                return;
+              }
+              
+              if (!allowNegativeBalance && principal > availableCash) {
+                alert(`Valor a aplicar (${formatCurrency(principal)}) é maior que o caixa disponível (${formatCurrency(availableCash)})`);
+                return;
+              }
+              
+              if (!editingInvestment.startDate || !editingInvestment.endDate) {
+                alert('Informe as datas de início e fim');
+                return;
+              }
+              
+              if (new Date(editingInvestment.endDate) <= new Date(editingInvestment.startDate)) {
+                alert('Data de fim deve ser posterior à data de início');
+                return;
+              }
+              
+              const investment = {
+                ...editingInvestment,
+                aircraftId: selectedAircraft.id,
+                userId: user.id,
+                principal,
+                status: editingInvestment.status || 'ACTIVE',
+                params: {
+                  ...editingInvestment.params,
+                  base: editingInvestment.params?.base || 252,
+                  capitalization: editingInvestment.params?.capitalization || 'diaria',
+                },
+              } as CashInvestment;
+              
+              try {
+                // Calcular valor final antes de salvar
+                const calc = calculateInvestment(investment);
+                investment.estimatedFinalValue = calc.finalValue;
+                
+                storage.saveCashInvestment(investment, user.id, user.nome);
+                loadData();
+                setInvestmentModalOpen(false);
+                setEditingInvestment({});
+                setInvestmentCalculation(null);
+              } catch (e: any) {
+                alert('Erro ao salvar: ' + e.message);
+              }
+            }}>Confirmar Aplicação</Button>
+          </>
+        }
+      >
+        <div className="form-grid">
+          {/* Valor a aplicar */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <Input
+                  label="Valor a Aplicar (R$) *"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={editingInvestment.principal || ''}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setEditingInvestment({ ...editingInvestment, principal: value });
+                    // Recalcular
+                    if (value > 0 && editingInvestment.startDate && editingInvestment.endDate && editingInvestment.investmentType) {
+                      try {
+                        const temp = {
+                          ...editingInvestment,
+                          principal: value,
+                        } as CashInvestment;
+                        const calc = calculateInvestment(temp);
+                        setInvestmentCalculation(calc);
+                      } catch {}
+                    }
+                  }}
+                  required
+                />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const availableCash = storage.getAvailableCash(selectedAircraft.id, editingInvestment.cashAccountId);
+                  setEditingInvestment({ ...editingInvestment, principal: availableCash });
+                  // Recalcular
+                  if (editingInvestment.startDate && editingInvestment.endDate && editingInvestment.investmentType) {
+                    try {
+                      const temp = {
+                        ...editingInvestment,
+                        principal: availableCash,
+                      } as CashInvestment;
+                      const calc = calculateInvestment(temp);
+                      setInvestmentCalculation(calc);
+                    } catch {}
+                  }
+                }}
+              >
+                Aplicar 100%
+              </Button>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+              Caixa disponível: {formatCurrency(storage.getAvailableCash(selectedAircraft.id, editingInvestment.cashAccountId))}
+            </div>
+          </div>
+
+          {/* Conta bancária */}
+          <Select
+            label="Conta de Caixa *"
+            options={bankAccounts.map(a => ({ value: a.id, label: `${a.nome} (${formatCurrency(a.saldoAtual)})` }))}
+            value={editingInvestment.cashAccountId || ''}
+            onChange={(e) => setEditingInvestment({ ...editingInvestment, cashAccountId: e.target.value })}
+            required
+          />
+
+          {/* Tipo de aplicação */}
+          <Select
+            label="Tipo de Aplicação *"
+            options={[
+              { value: 'CDI', label: 'CDI (% do CDI)' },
+              { value: 'POS_FIXADO', label: 'Pós-fixado (Taxa anual)' },
+              { value: 'PREFIXADO', label: 'Prefixado (Taxa anual)' },
+              { value: 'IPCA_PLUS', label: 'IPCA+' },
+              { value: 'POUPANCA', label: 'Poupança' },
+              { value: 'SELIC', label: 'SELIC' },
+              { value: 'CDB', label: 'CDB' },
+              { value: 'LCI', label: 'LCI' },
+              { value: 'LCA', label: 'LCA' },
+            ]}
+            value={editingInvestment.investmentType || 'CDI'}
+            onChange={(e) => {
+              const type = e.target.value as InvestmentType;
+              const newParams: any = { ...editingInvestment.params };
+              
+              // Resetar parâmetros específicos
+              if (type === 'CDI') {
+                newParams.percentCDI = newParams.percentCDI || 100;
+              } else if (type === 'POS_FIXADO' || type === 'PREFIXADO' || type === 'CDB' || type === 'LCI' || type === 'LCA') {
+                newParams.annualRate = newParams.annualRate || 13.25;
+              } else if (type === 'IPCA_PLUS') {
+                newParams.ipcaExpected = newParams.ipcaExpected || 4.62;
+                newParams.spread = newParams.spread || 6;
+              }
+              
+              setEditingInvestment({ 
+                ...editingInvestment, 
+                investmentType: type,
+                params: newParams,
+              });
+              // Recalcular
+              if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                try {
+                  const temp = {
+                    ...editingInvestment,
+                    investmentType: type,
+                    params: newParams,
+                  } as CashInvestment;
+                  const calc = calculateInvestment(temp);
+                  setInvestmentCalculation(calc);
+                } catch {}
+              }
+            }}
+            required
+          />
+
+          {/* Parâmetros específicos por tipo */}
+          {editingInvestment.investmentType === 'CDI' && (
+            <>
+              <Input
+                label="% do CDI *"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editingInvestment.params?.percentCDI || ''}
+                onChange={(e) => {
+                  const newParams = { 
+                    ...editingInvestment.params,
+                    percentCDI: parseFloat(e.target.value),
+                    base: editingInvestment.params?.base || 252,
+                    capitalization: editingInvestment.params?.capitalization || 'diaria',
+                  };
+                  setEditingInvestment({ ...editingInvestment, params: newParams });
+                  // Recalcular
+                  if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                    try {
+                      const temp = {
+                        ...editingInvestment,
+                        params: newParams,
+                      } as CashInvestment;
+                      const calc = calculateInvestment(temp);
+                      setInvestmentCalculation(calc);
+                    } catch {}
+                  }
+                }}
+                placeholder="Ex: 100 para 100% do CDI"
+                required
+              />
+            </>
+          )}
+
+          {(editingInvestment.investmentType === 'POS_FIXADO' || editingInvestment.investmentType === 'PREFIXADO' || editingInvestment.investmentType === 'CDB' || editingInvestment.investmentType === 'LCI' || editingInvestment.investmentType === 'LCA') && (
+            <Input
+              label="Taxa Anual (% a.a.) *"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editingInvestment.params?.annualRate || ''}
+              onChange={(e) => {
+                const newParams = { 
+                  ...editingInvestment.params,
+                  annualRate: parseFloat(e.target.value),
+                  base: editingInvestment.params?.base || 252,
+                  capitalization: editingInvestment.params?.capitalization || 'diaria',
+                };
+                setEditingInvestment({ ...editingInvestment, params: newParams });
+                // Recalcular
+                if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                  try {
+                    const temp = {
+                      ...editingInvestment,
+                      params: newParams,
+                    } as CashInvestment;
+                    const calc = calculateInvestment(temp);
+                    setInvestmentCalculation(calc);
+                  } catch {}
+                }
+              }}
+              placeholder="Ex: 13.25 para 13,25% a.a."
+              required
+            />
+          )}
+
+          {editingInvestment.investmentType === 'IPCA_PLUS' && (
+            <>
+              <Input
+                label="IPCA Esperado (% a.a.) *"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editingInvestment.params?.ipcaExpected || ''}
+                onChange={(e) => {
+                  const newParams = { 
+                    ...editingInvestment.params,
+                    ipcaExpected: parseFloat(e.target.value),
+                    base: editingInvestment.params?.base || 252,
+                    capitalization: editingInvestment.params?.capitalization || 'diaria',
+                  };
+                  setEditingInvestment({ ...editingInvestment, params: newParams });
+                  // Recalcular
+                  if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                    try {
+                      const temp = {
+                        ...editingInvestment,
+                        params: newParams,
+                      } as CashInvestment;
+                      const calc = calculateInvestment(temp);
+                      setInvestmentCalculation(calc);
+                    } catch {}
+                  }
+                }}
+                placeholder="Ex: 4.62 para 4,62% a.a."
+                required
+              />
+              <Input
+                label="Spread (% a.a.) *"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editingInvestment.params?.spread || ''}
+                onChange={(e) => {
+                  const newParams = { 
+                    ...editingInvestment.params,
+                    spread: parseFloat(e.target.value),
+                    base: editingInvestment.params?.base || 252,
+                    capitalization: editingInvestment.params?.capitalization || 'diaria',
+                  };
+                  setEditingInvestment({ ...editingInvestment, params: newParams });
+                  // Recalcular
+                  if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                    try {
+                      const temp = {
+                        ...editingInvestment,
+                        params: newParams,
+                      } as CashInvestment;
+                      const calc = calculateInvestment(temp);
+                      setInvestmentCalculation(calc);
+                    } catch {}
+                  }
+                }}
+                placeholder="Ex: 6 para IPCA + 6%"
+                required
+              />
+            </>
+          )}
+
+          {/* Base de cálculo */}
+          <Select
+            label="Base de Cálculo"
+            options={[
+              { value: '252', label: '252 dias (dias úteis)' },
+              { value: '365', label: '365 dias (dias corridos)' },
+            ]}
+            value={String(editingInvestment.params?.base || 252)}
+            onChange={(e) => {
+              const newParams = { 
+                ...editingInvestment.params,
+                base: parseInt(e.target.value) as 252 | 365,
+                capitalization: editingInvestment.params?.capitalization || 'diaria',
+              };
+              setEditingInvestment({ ...editingInvestment, params: newParams });
+              // Recalcular
+              if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                try {
+                  const temp = {
+                    ...editingInvestment,
+                    params: newParams,
+                  } as CashInvestment;
+                  const calc = calculateInvestment(temp);
+                  setInvestmentCalculation(calc);
+                } catch {}
+              }
+            }}
+          />
+
+          {/* Capitalização */}
+          <Select
+            label="Capitalização"
+            options={[
+              { value: 'diaria', label: 'Diária' },
+              { value: 'mensal', label: 'Mensal' },
+            ]}
+            value={editingInvestment.params?.capitalization || 'diaria'}
+            onChange={(e) => {
+              const newParams = { 
+                ...editingInvestment.params,
+                capitalization: e.target.value as 'diaria' | 'mensal',
+                base: editingInvestment.params?.base || 252,
+              };
+              setEditingInvestment({ ...editingInvestment, params: newParams });
+              // Recalcular
+              if (editingInvestment.principal && editingInvestment.startDate && editingInvestment.endDate) {
+                try {
+                  const temp = {
+                    ...editingInvestment,
+                    params: newParams,
+                  } as CashInvestment;
+                  const calc = calculateInvestment(temp);
+                  setInvestmentCalculation(calc);
+                } catch {}
+              }
+            }}
+          />
+
+          {/* Datas */}
+          <Input
+            label="Data de Início *"
+            type="date"
+            value={editingInvestment.startDate || ''}
+            onChange={(e) => {
+              setEditingInvestment({ ...editingInvestment, startDate: e.target.value });
+              // Recalcular
+              if (editingInvestment.principal && e.target.value && editingInvestment.endDate && editingInvestment.investmentType) {
+                try {
+                  const temp = {
+                    ...editingInvestment,
+                    startDate: e.target.value,
+                  } as CashInvestment;
+                  const calc = calculateInvestment(temp);
+                  setInvestmentCalculation(calc);
+                } catch {}
+              }
+            }}
+            required
+          />
+          <Input
+            label="Data de Fim *"
+            type="date"
+            value={editingInvestment.endDate || ''}
+            onChange={(e) => {
+              setEditingInvestment({ ...editingInvestment, endDate: e.target.value });
+              // Recalcular
+              if (editingInvestment.principal && editingInvestment.startDate && e.target.value && editingInvestment.investmentType) {
+                try {
+                  const temp = {
+                    ...editingInvestment,
+                    endDate: e.target.value,
+                  } as CashInvestment;
+                  const calc = calculateInvestment(temp);
+                  setInvestmentCalculation(calc);
+                } catch {}
+              }
+            }}
+            required
+          />
+
+          {/* Flags */}
+          <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={editingInvestment.isSimulation || false}
+                onChange={(e) => setEditingInvestment({ ...editingInvestment, isSimulation: e.target.checked })}
+              />
+              Apenas simulação (não mexe no caixa/ledger)
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={allowNegativeBalance}
+                onChange={(e) => setAllowNegativeBalance(e.target.checked)}
+              />
+              Permitir saldo negativo
+            </label>
+          </div>
+
+          {/* Resultado do cálculo */}
+          {investmentCalculation && (
+            <div style={{ gridColumn: '1 / -1', padding: '1rem', background: 'var(--success-bg)', borderRadius: '0.5rem', border: '1px solid var(--success-border)' }}>
+              <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 600 }}>Resultado do Cálculo</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.875rem' }}>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Valor Principal (VP):</span>
+                  <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>{formatCurrency(investmentCalculation.principal)}</div>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Valor Final (VF):</span>
+                  <div style={{ fontWeight: 600, color: 'var(--success-color)', marginTop: '0.25rem' }}>{formatCurrency(investmentCalculation.finalValue)}</div>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Juros Ganhos:</span>
+                  <div style={{ fontWeight: 600, color: 'var(--success-color)', marginTop: '0.25rem' }}>{formatCurrency(investmentCalculation.interestEarned)}</div>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Rentabilidade no Período:</span>
+                  <div style={{ fontWeight: 600, color: 'var(--success-color)', marginTop: '0.25rem' }}>{investmentCalculation.periodReturn.toFixed(2)}%</div>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Rentabilidade Anual Equivalente:</span>
+                  <div style={{ fontWeight: 600, color: 'var(--success-color)', marginTop: '0.25rem' }}>{investmentCalculation.annualEquivalentReturn.toFixed(2)}%</div>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-secondary)' }}>Dias:</span>
+                  <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>
+                    {investmentCalculation.daysElapsed} corridos
+                    {investmentCalculation.calculationDetails.baseUsed === 252 && ` / ~${investmentCalculation.businessDaysEstimated} úteis`}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
