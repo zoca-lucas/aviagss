@@ -812,6 +812,29 @@ export interface MarginReserveMovement {
 }
 
 // ============================================
+// APLICAÇÕES FINANCEIRAS (Reserva de Margem)
+// ============================================
+
+export interface FinancialApplication {
+  id: string;
+  aircraftId: string;
+  reserveId: string; // Vinculado à reserva de margem
+  nome: string; // Ex: "CDB Banco XYZ", "Tesouro IPCA+", etc.
+  tipo: string; // Ex: "CDB", "LCI", "LCA", "Tesouro Direto", "Fundos", etc.
+  instituicao: string; // Banco ou instituição financeira
+  valorAplicado: number; // Valor inicial aplicado
+  taxaRendimento: number; // Taxa anual (ex: 12.5 para 12,5% a.a.)
+  dataAplicacao: string; // Data de início da aplicação
+  dataVencimento?: string; // Data de vencimento (se aplicável)
+  liquidez: 'diaria' | 'vencimento' | 'd+1' | 'd+30' | 'outros'; // Tipo de liquidez
+  observacoes?: string;
+  ativa: boolean; // Se a aplicação ainda está ativa
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+}
+
+// ============================================
 // ATIVOS PATRIMONIAIS DA AERONAVE
 // ============================================
 

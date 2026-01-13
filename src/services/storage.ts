@@ -28,6 +28,7 @@ import {
   // Novas interfaces para Reserva de Margem e Ativos
   MarginReserve,
   MarginReserveMovement,
+  FinancialApplication,
   FinancialRiskStatus,
   AircraftAsset,
   AssetInvestment,
@@ -67,6 +68,7 @@ const STORAGE_KEYS = {
   // Novas chaves para Reserva de Margem e Ativos
   MARGIN_RESERVES: 'aerogestao_margin_reserves',
   MARGIN_RESERVE_MOVEMENTS: 'aerogestao_margin_reserve_movements',
+  FINANCIAL_APPLICATIONS: 'aerogestao_financial_applications',
   AIRCRAFT_ASSETS: 'aerogestao_aircraft_assets',
   ASSET_INVESTMENTS: 'aerogestao_asset_investments',
   LIQUIDITY_ALERTS: 'aerogestao_liquidity_alerts',
@@ -2216,6 +2218,104 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
       diasAbaixoMinimo,
       ultimoAporte,
       ultimoUsoEmergencial,
+    };
+  },
+
+  // ==========================================
+  // APLICAÇÕES FINANCEIRAS
+  // ==========================================
+
+  getFinancialApplications: (aircraftId?: string, reserveId?: string): FinancialApplication[] => {
+    let applications = getItem<FinancialApplication[]>(STORAGE_KEYS.FINANCIAL_APPLICATIONS, []);
+    if (aircraftId) applications = applications.filter(a => a.aircraftId === aircraftId);
+    if (reserveId) applications = applications.filter(a => a.reserveId === reserveId);
+    return applications.sort((a, b) => new Date(b.dataAplicacao).getTime() - new Date(a.dataAplicacao).getTime());
+  },
+
+  saveFinancialApplication: (application: FinancialApplication, userId: string, userName: string): FinancialApplication => {
+    const applications = getItem<FinancialApplication[]>(STORAGE_KEYS.FINANCIAL_APPLICATIONS, []);
+    const existing = applications.find(a => a.id === application.id);
+    
+    if (existing) {
+      const changes = getChanges(existing, application);
+      const index = applications.findIndex(a => a.id === application.id);
+      applications[index] = { ...application, updatedAt: new Date().toISOString() };
+      createAuditLog(userId, userName, 'update', 'financial_application', application.id, changes);
+    } else {
+      application.id = application.id || generateId();
+      application.createdAt = new Date().toISOString();
+      application.updatedAt = new Date().toISOString();
+      application.createdBy = userId;
+      applications.push(application);
+      createAuditLog(userId, userName, 'create', 'financial_application', application.id, []);
+    }
+    
+    setItem(STORAGE_KEYS.FINANCIAL_APPLICATIONS, applications);
+    return application;
+  },
+
+  deleteFinancialApplication: (id: string, userId: string, userName: string): void => {
+    const applications = getItem<FinancialApplication[]>(STORAGE_KEYS.FINANCIAL_APPLICATIONS, []);
+    const updatedApplications = applications.filter(a => a.id !== id);
+    setItem(STORAGE_KEYS.FINANCIAL_APPLICATIONS, updatedApplications);
+    createAuditLog(userId, userName, 'delete', 'financial_application', id, []);
+  },
+
+  calculateApplicationYield: (application: FinancialApplication, dataBase?: string): {
+    diasDecorridos: number;
+    rendimentoBruto: number;
+    rendimentoLiquido: number;
+    valorAtual: number;
+    rendimentoPercentual: number;
+  } => {
+    const dataBaseCalculo = dataBase ? new Date(dataBase) : new Date();
+    const dataAplicacao = new Date(application.dataAplicacao);
+    const diasDecorridos = Math.max(0, Math.floor((dataBaseCalculo.getTime() - dataAplicacao.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    // Calcular rendimento: valor * (taxa/100) * (dias/365)
+    const taxaDecimal = application.taxaRendimento / 100;
+    const rendimentoBruto = application.valorAplicado * taxaDecimal * (diasDecorridos / 365);
+    
+    // Considerar imposto de renda (15% para até 180 dias, 17.5% para até 360, 20% para mais de 360)
+    let aliquotaIR = 0.20; // Padrão 20%
+    if (diasDecorridos <= 180) aliquotaIR = 0.15;
+    else if (diasDecorridos <= 360) aliquotaIR = 0.175;
+    
+    const impostoRenda = rendimentoBruto * aliquotaIR;
+    const rendimentoLiquido = rendimentoBruto - impostoRenda;
+    const valorAtual = application.valorAplicado + rendimentoLiquido;
+    const rendimentoPercentual = (rendimentoLiquido / application.valorAplicado) * 100;
+    
+    return {
+      diasDecorridos,
+      rendimentoBruto,
+      rendimentoLiquido,
+      valorAtual,
+      rendimentoPercentual,
+    };
+  },
+
+  getTotalApplicationYield: (aircraftId: string): {
+    totalAplicado: number;
+    totalRendimento: number;
+    valorAtual: number;
+    aplicacoes: FinancialApplication[];
+  } => {
+    const applications = storage.getFinancialApplications(aircraftId).filter(a => a.ativa);
+    let totalAplicado = 0;
+    let totalRendimento = 0;
+    
+    applications.forEach(app => {
+      totalAplicado += app.valorAplicado;
+      const yieldData = storage.calculateApplicationYield(app);
+      totalRendimento += yieldData.rendimentoLiquido;
+    });
+    
+    return {
+      totalAplicado,
+      totalRendimento,
+      valorAtual: totalAplicado + totalRendimento,
+      aplicacoes: applications,
     };
   },
 
