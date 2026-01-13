@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Users,
   Book as BookIcon,
+  Upload,
 } from 'lucide-react';
 import './Layout.css';
 
