@@ -45,10 +45,21 @@ class AirportService {
       let response: Response | null = null;
       
       try {
-        response = await fetch('/data/airports.csv');
-        if (response.ok) {
-          csvText = await response.text();
-          console.log('Carregado arquivo local: /data/airports.csv');
+        // Tenta múltiplos caminhos possíveis
+        const localPaths = ['/data/airports.csv', './data/airports.csv', '/airports.csv'];
+        for (const path of localPaths) {
+          try {
+            response = await fetch(path);
+            if (response.ok) {
+              csvText = await response.text();
+              if (csvText && csvText.length > 100) { // Verifica se tem conteúdo válido
+                console.log(`Carregado arquivo local: ${path}`);
+                break;
+              }
+            }
+          } catch (e) {
+            // Continua tentando próximo caminho
+          }
         }
       } catch (e) {
         console.log('Arquivo local não encontrado, tentando baixar da internet...');
@@ -56,12 +67,26 @@ class AirportService {
 
       // Se não encontrou local, baixa da internet
       if (!csvText) {
-        response = await fetch(OURAIRPORTS_CSV_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+          response = await fetch(OURAIRPORTS_CSV_URL);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          csvText = await response.text();
+          console.log('Carregado da internet: OurAirports');
+        } catch (fetchError) {
+          console.error('Erro ao baixar da internet:', fetchError);
+          // Se falhar, tenta usar cache mesmo se antigo
+          const oldCache = localStorage.getItem('ourairports_data');
+          if (oldCache) {
+            console.log('Usando cache antigo como fallback');
+            this.airports = JSON.parse(oldCache);
+            this.buildCitiesMap();
+            this.loaded = true;
+            return;
+          }
+          throw new Error('Não foi possível carregar dados de aeroportos. Verifique sua conexão com a internet.');
         }
-        csvText = await response.text();
-        console.log('Carregado da internet: OurAirports');
       }
       
       this.airports = this.parseCSV(csvText);

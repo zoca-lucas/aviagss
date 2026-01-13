@@ -35,9 +35,22 @@ export default function AirportAutocomplete({
   useEffect(() => {
     const load = async () => {
       try {
+        setLoading(true);
         await airportService.loadAirports();
-      } catch (error) {
+        console.log('Aeroportos carregados com sucesso');
+      } catch (error: any) {
         console.error('Erro ao carregar aeroportos:', error);
+        // Tenta novamente após 2 segundos
+        setTimeout(async () => {
+          try {
+            await airportService.loadAirports();
+            console.log('Aeroportos carregados na segunda tentativa');
+          } catch (retryError) {
+            console.error('Erro na segunda tentativa:', retryError);
+          }
+        }, 2000);
+      } finally {
+        setLoading(false);
       }
     };
     load();
