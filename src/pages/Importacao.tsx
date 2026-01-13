@@ -381,7 +381,8 @@ export default function Importacao() {
             >
               Cancelar
             </Button>
-            <Button
+            <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -393,10 +394,32 @@ export default function Importacao() {
                 handleImport();
               }}
               disabled={loading}
-              icon={loading ? <Loader2 size={18} className="spinning" /> : <Upload size={18} />}
+              style={{
+                padding: '0.625rem 1.25rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                background: loading ? 'var(--text-secondary)' : 'var(--accent-color)',
+                color: 'white',
+                fontWeight: 500,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9375rem',
+              }}
             >
-              {loading ? 'Importando...' : 'Importar Dados'}
-            </Button>
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="spinning" />
+                  Importando...
+                </>
+              ) : (
+                <>
+                  <Upload size={18} />
+                  Importar Dados
+                </>
+              )}
+            </button>
           </div>
         )}
       </Card>
