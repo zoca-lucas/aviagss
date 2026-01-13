@@ -147,13 +147,13 @@ export default function Configuracoes() {
                 <Fuel size={20} />
                 <div>
                   <span className="config-label">Fator Conversão lbs → litros</span>
-                  <span className="config-hint">Para AVGAS: ~0.54</span>
+                  <span className="config-hint">Para AVGAS: ~0.567 (545 lbs = 309 L)</span>
                 </div>
               </div>
               <Input
                 type="number"
                 step="0.01"
-                value={config.fatorConversaoLbsLitros || 0.54}
+                value={config.fatorConversaoLbsLitros || 0.567}
                 onChange={(e) => setConfig({ ...config, fatorConversaoLbsLitros: parseFloat(e.target.value) })}
                 className="config-input"
               />

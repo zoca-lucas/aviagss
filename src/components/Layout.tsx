@@ -22,6 +22,7 @@ import {
   X,
   ChevronDown,
   Users,
+  Book as BookIcon,
 } from 'lucide-react';
 import './Layout.css';
 
@@ -39,6 +40,7 @@ export default function Layout({ children }: LayoutProps) {
   const menuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard', show: true },
     { path: '/aeronaves', icon: Plane, label: 'Aeronaves', show: permissions.canManageAircraft },
+    { path: '/catalogo', icon: BookIcon, label: 'Catálogo', show: true },
     { path: '/lancamentos', icon: ClipboardList, label: 'Lançamentos de Voo', show: true },
     { path: '/logbook', icon: BookOpen, label: 'Logbook', show: true },
     { path: '/manutencao', icon: Wrench, label: 'Manutenção', show: true },

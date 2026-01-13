@@ -11,6 +11,8 @@ import {
   MaintenanceSchedule,
   Flight,
   Expense,
+  Revenue,
+  BankAccount,
   Payment,
   Document,
   Booking,
@@ -51,6 +53,8 @@ const STORAGE_KEYS = {
   FLIGHT_ENTRIES: 'aerogestao_flight_entries',
   TBO_PROVISIONS: 'aerogestao_tbo_provisions',
   EXPENSES: 'aerogestao_expenses',
+  REVENUES: 'aerogestao_revenues',
+  BANK_ACCOUNTS: 'aerogestao_bank_accounts',
   PAYMENTS: 'aerogestao_payments',
   DOCUMENTS: 'aerogestao_documents',
   BOOKINGS: 'aerogestao_bookings',
@@ -802,22 +806,40 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
     const expenses = getItem<Expense[]>(STORAGE_KEYS.EXPENSES, []);
     const existing = expenses.find(e => e.id === expense.id);
     
+    // Se estiver editando, remover pagamentos antigos relacionados
     if (existing) {
       const changes = getChanges(existing, expense);
       const index = expenses.findIndex(e => e.id === expense.id);
       expenses[index] = expense;
       createAuditLog(userId, userName, 'update', 'expense', expense.id, changes);
+      
+      // Remover pagamentos antigos relacionados a esta despesa
+      const payments = getItem<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+      const updatedPayments = payments.filter(p => p.expenseId !== expense.id);
+      setItem(STORAGE_KEYS.PAYMENTS, updatedPayments);
+      
+      // Atualizar saldo bancário (reverter valor antigo e aplicar novo)
+      if (existing.contaBancariaId) {
+        storage.updateBankAccountBalance(existing.contaBancariaId, existing.valor, 'revert');
+      }
     } else {
       expense.id = expense.id || generateId();
       expense.createdAt = new Date().toISOString();
       expense.createdBy = userId;
       expenses.push(expense);
       createAuditLog(userId, userName, 'create', 'expense', expense.id, []);
-      
-      // Criar rateio automático se configurado
-      if (expense.rateioAutomatico) {
-        storage.createExpenseRateio(expense, userId, userName);
-      }
+    }
+    
+    // Atualizar saldo bancário (subtrair valor da despesa)
+    if (expense.contaBancariaId) {
+      storage.updateBankAccountBalance(expense.contaBancariaId, expense.valor, 'subtract');
+    }
+    
+    // Criar rateio (automático ou manual)
+    if (expense.rateioAutomatico) {
+      storage.createExpenseRateio(expense, userId, userName);
+    } else if (expense.rateioManual && expense.rateioManual.length > 0) {
+      storage.createManualRateio(expense, userId, userName);
     }
     
     setItem(STORAGE_KEYS.EXPENSES, expenses);
@@ -825,8 +847,16 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
   },
 
   deleteExpense: (id: string, userId: string, userName: string): void => {
-    const expenses = getItem<Expense[]>(STORAGE_KEYS.EXPENSES, []).filter(e => e.id !== id);
-    setItem(STORAGE_KEYS.EXPENSES, expenses);
+    const expenses = getItem<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    const expense = expenses.find(e => e.id === id);
+    
+    if (expense && expense.contaBancariaId) {
+      // Reverter saldo bancário
+      storage.updateBankAccountBalance(expense.contaBancariaId, expense.valor, 'revert');
+    }
+    
+    const updatedExpenses = expenses.filter(e => e.id !== id);
+    setItem(STORAGE_KEYS.EXPENSES, updatedExpenses);
     createAuditLog(userId, userName, 'delete', 'expense', id, []);
   },
 
@@ -878,6 +908,224 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
         setItem(STORAGE_KEYS.PAYMENTS, payments);
       }
     });
+  },
+
+  createManualRateio: (expense: Expense, _userId: string, _userName: string): void => {
+    if (!expense.rateioManual || expense.rateioManual.length === 0) return;
+    
+    const payments = getItem<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+    
+    expense.rateioManual.forEach(rateio => {
+      if (rateio.valor > 0) {
+        const payment: Payment = {
+          id: generateId(),
+          expenseId: expense.id,
+          memberId: rateio.memberId,
+          aircraftId: expense.aircraftId,
+          valor: rateio.valor,
+          valorOriginal: expense.valor,
+          descricao: expense.subVoo 
+            ? `${expense.descricao} (${expense.subVoo})`
+            : expense.descricao,
+          status: 'pendente',
+          dataVencimento: expense.dataVencimento || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+        };
+        
+        payments.push(payment);
+      }
+    });
+    
+    setItem(STORAGE_KEYS.PAYMENTS, payments);
+  },
+
+  // ==========================================
+  // RECEITAS
+  // ==========================================
+
+  getRevenues: (aircraftId?: string): Revenue[] => {
+    let revenues = getItem<Revenue[]>(STORAGE_KEYS.REVENUES, []);
+    if (aircraftId) revenues = revenues.filter(r => r.aircraftId === aircraftId);
+    return revenues.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  },
+
+  saveRevenue: (revenue: Revenue, userId: string, userName: string): Revenue => {
+    const revenues = getItem<Revenue[]>(STORAGE_KEYS.REVENUES, []);
+    const existing = revenues.find(r => r.id === revenue.id);
+    
+    if (existing) {
+      const changes = getChanges(existing, revenue);
+      const index = revenues.findIndex(r => r.id === revenue.id);
+      revenues[index] = revenue;
+      createAuditLog(userId, userName, 'update', 'revenue', revenue.id, changes);
+      
+      // Atualizar saldo bancário (reverter valor antigo e aplicar novo)
+      if (existing.contaBancariaId) {
+        storage.updateBankAccountBalance(existing.contaBancariaId, existing.valor, 'revert');
+      }
+    } else {
+      revenue.id = revenue.id || generateId();
+      revenue.createdAt = new Date().toISOString();
+      revenue.createdBy = userId;
+      revenues.push(revenue);
+      createAuditLog(userId, userName, 'create', 'revenue', revenue.id, []);
+    }
+    
+    // Atualizar saldo bancário (adicionar valor da receita)
+    if (revenue.contaBancariaId) {
+      storage.updateBankAccountBalance(revenue.contaBancariaId, revenue.valor, 'add');
+    }
+    
+    // Criar rateio se configurado
+    if (revenue.rateioAutomatico) {
+      storage.createRevenueRateio(revenue, userId, userName);
+    } else if (revenue.rateioManual && revenue.rateioManual.length > 0) {
+      storage.createManualRevenueRateio(revenue, userId, userName);
+    }
+    
+    setItem(STORAGE_KEYS.REVENUES, revenues);
+    return revenue;
+  },
+
+  deleteRevenue: (id: string, userId: string, userName: string): void => {
+    const revenues = getItem<Revenue[]>(STORAGE_KEYS.REVENUES, []);
+    const revenue = revenues.find(r => r.id === id);
+    
+    if (revenue && revenue.contaBancariaId) {
+      // Reverter saldo bancário
+      storage.updateBankAccountBalance(revenue.contaBancariaId, revenue.valor, 'revert');
+    }
+    
+    const updatedRevenues = revenues.filter(r => r.id !== id);
+    setItem(STORAGE_KEYS.REVENUES, updatedRevenues);
+    createAuditLog(userId, userName, 'delete', 'revenue', id, []);
+  },
+
+  createRevenueRateio: (revenue: Revenue, _userId: string, _userName: string): void => {
+    const memberships = storage.getMemberships(revenue.aircraftId).filter(m => m.status === 'ativo');
+    if (memberships.length === 0) return;
+    
+    // Rateio igual para receitas (divide igualmente entre membros ativos)
+    const valorPorMembro = revenue.valor / memberships.length;
+    
+    memberships.forEach(membership => {
+      const payment: Payment = {
+        id: generateId(),
+        expenseId: undefined, // Receitas não têm expenseId
+        memberId: membership.userId,
+        aircraftId: revenue.aircraftId,
+        valor: valorPorMembro,
+        valorOriginal: revenue.valor,
+        descricao: revenue.descricao,
+        status: 'pago', // Receitas são consideradas pagas automaticamente
+        dataVencimento: revenue.data,
+        dataPagamento: revenue.data,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const payments = getItem<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+      payments.push(payment);
+      setItem(STORAGE_KEYS.PAYMENTS, payments);
+    });
+  },
+
+  createManualRevenueRateio: (revenue: Revenue, _userId: string, _userName: string): void => {
+    if (!revenue.rateioManual || revenue.rateioManual.length === 0) return;
+    
+    const payments = getItem<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+    
+    revenue.rateioManual.forEach(rateio => {
+      if (rateio.valor > 0) {
+        const payment: Payment = {
+          id: generateId(),
+          expenseId: undefined,
+          memberId: rateio.memberId,
+          aircraftId: revenue.aircraftId,
+          valor: rateio.valor,
+          valorOriginal: revenue.valor,
+          descricao: revenue.subVoo 
+            ? `${revenue.descricao} (${revenue.subVoo})`
+            : revenue.descricao,
+          status: 'pago',
+          dataVencimento: revenue.data,
+          dataPagamento: revenue.data,
+          createdAt: new Date().toISOString(),
+        };
+        
+        payments.push(payment);
+      }
+    });
+    
+    setItem(STORAGE_KEYS.PAYMENTS, payments);
+  },
+
+  // ==========================================
+  // CONTAS BANCÁRIAS
+  // ==========================================
+
+  getBankAccounts: (aircraftId?: string): BankAccount[] => {
+    let accounts = getItem<BankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []);
+    if (aircraftId) accounts = accounts.filter(a => a.aircraftId === aircraftId);
+    return accounts.filter(a => a.ativa);
+  },
+
+  saveBankAccount: (account: BankAccount, userId: string, userName: string): BankAccount => {
+    const accounts = getItem<BankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []);
+    const existing = accounts.find(a => a.id === account.id);
+    
+    if (existing) {
+      const changes = getChanges(existing, account);
+      const index = accounts.findIndex(a => a.id === account.id);
+      accounts[index] = { ...account, updatedAt: new Date().toISOString() };
+      createAuditLog(userId, userName, 'update', 'bank_account', account.id, changes);
+    } else {
+      account.id = account.id || generateId();
+      account.createdAt = new Date().toISOString();
+      account.updatedAt = new Date().toISOString();
+      account.saldoAtual = account.saldoInicial; // Inicializa saldo atual
+      accounts.push(account);
+      createAuditLog(userId, userName, 'create', 'bank_account', account.id, []);
+    }
+    
+    setItem(STORAGE_KEYS.BANK_ACCOUNTS, accounts);
+    return account;
+  },
+
+  updateBankAccountBalance: (accountId: string, valor: number, operation: 'add' | 'subtract' | 'revert'): void => {
+    const accounts = getItem<BankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []);
+    const account = accounts.find(a => a.id === accountId);
+    
+    if (!account) return;
+    
+    const index = accounts.findIndex(a => a.id === accountId);
+    if (operation === 'add') {
+      accounts[index].saldoAtual += valor;
+    } else if (operation === 'subtract') {
+      accounts[index].saldoAtual -= valor;
+    } else if (operation === 'revert') {
+      accounts[index].saldoAtual -= valor; // Reverte adição anterior
+    }
+    
+    accounts[index].updatedAt = new Date().toISOString();
+    setItem(STORAGE_KEYS.BANK_ACCOUNTS, accounts);
+  },
+
+  recalculateBankAccountBalance: (accountId: string): void => {
+    const account = getItem<BankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []).find(a => a.id === accountId);
+    if (!account) return;
+    
+    // Recalcular saldo baseado em todas as transações
+    const expenses = storage.getExpenses(account.aircraftId).filter(e => e.contaBancariaId === accountId);
+    const revenues = storage.getRevenues(account.aircraftId).filter(r => r.contaBancariaId === accountId);
+    
+    const totalDespesas = expenses.reduce((sum, e) => sum + e.valor, 0);
+    const totalReceitas = revenues.reduce((sum, r) => sum + r.valor, 0);
+    
+    const accounts = getItem<BankAccount[]>(STORAGE_KEYS.BANK_ACCOUNTS, []);
+    const index = accounts.findIndex(a => a.id === accountId);
+    accounts[index].saldoAtual = account.saldoInicial + totalReceitas - totalDespesas;
+    accounts[index].updatedAt = new Date().toISOString();
+    setItem(STORAGE_KEYS.BANK_ACCOUNTS, accounts);
   },
 
   // ==========================================
@@ -1234,7 +1482,7 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
   // Cálculos automáticos para FlightEntry
   calculateFlightEntryFields: (entry: Partial<FlightEntry>): Partial<FlightEntry> => {
     const config = storage.getConfig();
-    const fatorConversao = config.fatorConversaoLbsLitros || 0.54;
+    const fatorConversao = config.fatorConversaoLbsLitros || 0.567;
     
     // A) Combustível decolagem = Inicial + Abastecido (libras)
     const combustivelDecolagem = (entry.combustivelInicial || 0) + (entry.abastecimentoLibras || 0);
@@ -1244,6 +1492,7 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
     
     // C) Conversão lbs -> litros
     const combustivelConsumidoLitros = (entry.combustivelConsumido || 0) * fatorConversao;
+    const abastecimentoLitros = (entry.abastecimentoLibras || 0) * fatorConversao;
     
     // D) Tempo de voo em horas decimais para cálculo de TBO
     const horasVoo = (entry.tempoVoo || 0) / 60;
@@ -1281,6 +1530,7 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
       combustivelDecolagem,
       combustivelFinal,
       combustivelConsumidoLitros,
+      abastecimentoLitros: entry.abastecimentoLitros !== undefined ? entry.abastecimentoLitros : abastecimentoLitros, // Usa valor manual se fornecido, senão calcula
       provisaoTboGrossi,
       provisaoTboShimada,
       total,
@@ -2123,13 +2373,15 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
   // ==========================================
   
   getFinancialDashboard: (aircraftId: string): FinancialDashboard => {
-    // Caixa operacional (despesas e pagamentos)
+    // Caixa operacional (receitas, despesas e pagamentos)
     const expenses = storage.getExpenses(aircraftId);
+    const revenues = storage.getRevenues(aircraftId);
     const payments = storage.getPayments(undefined, aircraftId);
     
     const totalDespesas = expenses.reduce((sum, e) => sum + e.valor, 0);
+    const totalReceitas = revenues.reduce((sum, r) => sum + r.valor, 0);
     const totalRecebido = payments.filter(p => p.status === 'pago').reduce((sum, p) => sum + p.valor, 0);
-    const caixaOperacional = totalRecebido - totalDespesas;
+    const caixaOperacional = totalReceitas + totalRecebido - totalDespesas;
     
     // Reserva de margem
     const reserve = storage.getMarginReserve(aircraftId);
@@ -2239,7 +2491,7 @@ const ultimaExecucaoHoras = schedule.ultimaExecucao
       formatoData: 'dd/MM/yyyy',
       formatoHora: 'HH:mm',
       tboValorPorHora: 2800, // R$ 2.800,00 por hora
-      fatorConversaoLbsLitros: 0.54, // AVGAS
+      fatorConversaoLbsLitros: 0.567, // AVGAS (545 lbs = 309 L)
       reservaMargemMinima: 200000, // R$ 200.000,00 - Reserva de Margem Obrigatória
       alertaReservaPercentual: 110, // Alerta se < 110% do mínimo
     });

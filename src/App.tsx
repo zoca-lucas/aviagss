@@ -17,6 +17,7 @@ import RelatoriosLancamentos from './pages/RelatoriosLancamentos';
 import UsoPorSocio from './pages/UsoPorSocio';
 import Usuarios from './pages/Usuarios';
 import Configuracoes from './pages/Configuracoes';
+import Catalogo from './pages/Catalogo';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/aeronaves" element={<Aeronaves />} />
+              <Route path="/catalogo" element={<Catalogo />} />
               <Route path="/logbook" element={<Logbook />} />
               <Route path="/lancamentos" element={<LancamentosVoo />} />
               <Route path="/manutencao" element={<Manutencao />} />

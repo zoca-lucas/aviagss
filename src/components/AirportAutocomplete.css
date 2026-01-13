@@ -1,0 +1,180 @@
+.airport-autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.airport-autocomplete-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.airport-input-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.airport-autocomplete-input {
+  width: 100%;
+  padding: 0.625rem 2.5rem 0.625rem 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.airport-autocomplete-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+.airport-clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  z-index: 1;
+}
+
+.airport-clear-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.airport-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.airport-dropdown-loading,
+.airport-dropdown-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.airport-option {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.airport-option:last-child {
+  border-bottom: none;
+}
+
+.airport-option:hover {
+  background: var(--bg-secondary);
+}
+
+.airport-option.selected {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.airport-option-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.airport-option-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+}
+
+.airport-option-code {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--accent-color);
+  font-size: 0.875rem;
+  background: rgba(var(--accent-rgb), 0.1);
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.airport-option-details {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.airport-option-city {
+  color: var(--text-secondary);
+}
+
+.airport-option-region {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.airport-selected-info {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.airport-selected-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.airport-selected-value {
+  color: var(--text-primary);
+}
+
+.airport-selected-value strong {
+  color: var(--accent-color);
+  font-family: 'Courier New', monospace;
+}

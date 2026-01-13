@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Plane, Settings } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Plane, Settings, BookOpen } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -27,35 +28,56 @@ const tiposCombustivel = [
 ];
 
 const initialAircraft: Partial<Aircraft> = {
-  prefixo: '',
-  modelo: '',
-  fabricante: '',
-  numeroSerie: '',
-  anoFabricacao: new Date().getFullYear(),
-  tipo: 'pistao',
+    prefixo: '',
+    modelo: '',
+    fabricante: '',
+    numeroSerie: '',
+      anoFabricacao: new Date().getFullYear(),
+      tipo: 'pistao',
   baseHangar: '',
   consumoMedio: 36,
   velocidadeCruzeiro: 120,
-  tipoCombustivel: 'avgas',
-  unidadeCombustivel: 'litros',
-  horasCelula: 0,
-  ciclosTotais: 0,
+      tipoCombustivel: 'avgas',
+      unidadeCombustivel: 'litros',
+      horasCelula: 0,
+      ciclosTotais: 0,
   custoHora: 0,
   reservaCombustivel: 45,
   margemSeguranca: 10,
-  observacoes: '',
+      observacoes: '',
   active: true,
 };
 
 export default function Aeronaves() {
   const { user, permissions } = useAuth();
   const { aircrafts, refreshAircrafts, selectAircraft, selectedAircraft } = useAircraft();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const [componentModalOpen, setComponentModalOpen] = useState(false);
   const [editingAircraft, setEditingAircraft] = useState<Partial<Aircraft>>(initialAircraft);
   const [editingComponent, setEditingComponent] = useState<Partial<AircraftComponent>>({});
   const [components, setComponents] = useState<AircraftComponent[]>([]);
   const [selectedForComponents, setSelectedForComponents] = useState<Aircraft | null>(null);
+
+  // Verifica se há parâmetros da URL do catálogo
+  useEffect(() => {
+    const manufacturer = searchParams.get('manufacturer');
+    const model = searchParams.get('model');
+    const variant = searchParams.get('variant');
+
+    if (manufacturer && model) {
+      // Pré-preenche dados do catálogo
+      setEditingAircraft({
+        ...initialAircraft,
+        fabricante: manufacturer,
+        modelo: model + (variant ? ` ${variant}` : ''),
+      });
+      setModalOpen(true);
+      // Limpa parâmetros da URL
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (selectedForComponents) {
@@ -129,8 +151,8 @@ export default function Aeronaves() {
               setModalOpen(true);
             }}
           >
-            Nova Aeronave
-          </Button>
+          Nova Aeronave
+        </Button>
         )}
       </div>
 
@@ -176,22 +198,22 @@ export default function Aeronaves() {
               <h3 className="aircraft-prefix">{aircraft.prefixo}</h3>
               <p className="aircraft-model">{aircraft.fabricante} {aircraft.modelo}</p>
               <Badge variant="info">{getAircraftTypeLabel(aircraft.tipo)}</Badge>
-            </div>
+          </div>
 
             <div className="aircraft-stats">
               <div className="stat">
                 <span className="stat-label">Horas Célula</span>
                 <span className="stat-value">{formatHours(aircraft.horasCelula)}</span>
               </div>
-              <div className="stat">
+                <div className="stat">
                 <span className="stat-label">Ciclos</span>
                 <span className="stat-value">{aircraft.ciclosTotais}</span>
-              </div>
-              <div className="stat">
+                </div>
+                <div className="stat">
                 <span className="stat-label">Consumo</span>
                 <span className="stat-value">{aircraft.consumoMedio} L/h</span>
-              </div>
-              <div className="stat">
+                </div>
+                <div className="stat">
                 <span className="stat-label">Cruzeiro</span>
                 <span className="stat-value">{aircraft.velocidadeCruzeiro} kt</span>
               </div>
@@ -202,16 +224,16 @@ export default function Aeronaves() {
               <span>{aircraft.baseHangar || 'Sem base'}</span>
             </div>
 
-            <Button
+                <Button 
               variant="outline"
               className="select-btn"
               onClick={() => selectAircraft(aircraft.id)}
               disabled={selectedAircraft?.id === aircraft.id}
             >
               {selectedAircraft?.id === aircraft.id ? 'Selecionada' : 'Selecionar'}
-            </Button>
-          </Card>
-        ))}
+                </Button>
+            </Card>
+          ))}
 
         {aircrafts.length === 0 && (
           <div className="empty-state">
@@ -221,8 +243,8 @@ export default function Aeronaves() {
             {permissions.canManageAircraft && (
               <Button onClick={() => setModalOpen(true)}>Cadastrar Aeronave</Button>
             )}
-          </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Modal de Aeronave */}
@@ -240,36 +262,48 @@ export default function Aeronaves() {
           </>
         }
       >
+        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="outline"
+            icon={<BookOpen size={16} />}
+            onClick={() => {
+              setModalOpen(false);
+              navigate('/catalogo');
+            }}
+          >
+            Buscar no Catálogo
+          </Button>
+        </div>
         <div className="form-grid">
-          <Input
-            label="Prefixo"
+              <Input
+                label="Prefixo"
             value={editingAircraft.prefixo}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, prefixo: e.target.value.toUpperCase() })}
-            placeholder="PT-XXX"
-            required
-          />
-          <Input
-            label="Fabricante"
+                placeholder="PT-XXX"
+                required
+              />
+              <Input
+                label="Fabricante"
             value={editingAircraft.fabricante}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, fabricante: e.target.value })}
             placeholder="Cessna"
-            required
-          />
-          <Input
-            label="Modelo"
+                required
+              />
+              <Input
+                label="Modelo"
             value={editingAircraft.modelo}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, modelo: e.target.value })}
             placeholder="172"
-            required
-          />
-          <Input
-            label="Número de Série"
+                required
+              />
+              <Input
+                label="Número de Série"
             value={editingAircraft.numeroSerie}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, numeroSerie: e.target.value })}
-          />
-          <Input
-            label="Ano de Fabricação"
-            type="number"
+              />
+              <Input
+                label="Ano de Fabricação"
+                type="number"
             value={editingAircraft.anoFabricacao}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, anoFabricacao: parseInt(e.target.value) })}
           />
@@ -285,33 +319,33 @@ export default function Aeronaves() {
             onChange={(e) => setEditingAircraft({ ...editingAircraft, baseHangar: e.target.value })}
             placeholder="SBSP"
           />
-          <Select
-            label="Combustível"
-            options={tiposCombustivel}
+              <Select
+                label="Combustível"
+                options={tiposCombustivel}
             value={editingAircraft.tipoCombustivel}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, tipoCombustivel: e.target.value as Aircraft['tipoCombustivel'] })}
-          />
-          <Input
-            label="Consumo Médio (L/h)"
-            type="number"
+              />
+              <Input
+                label="Consumo Médio (L/h)"
+                type="number"
             value={editingAircraft.consumoMedio}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, consumoMedio: parseFloat(e.target.value) })}
-          />
-          <Input
-            label="Velocidade Cruzeiro (kt)"
-            type="number"
+              />
+              <Input
+                label="Velocidade Cruzeiro (kt)"
+                type="number"
             value={editingAircraft.velocidadeCruzeiro}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, velocidadeCruzeiro: parseInt(e.target.value) })}
-          />
-          <Input
+              />
+              <Input
             label="Horas Célula"
-            type="number"
+                type="number"
             value={editingAircraft.horasCelula}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, horasCelula: parseFloat(e.target.value) })}
-          />
-          <Input
-            label="Ciclos Totais"
-            type="number"
+              />
+              <Input
+                label="Ciclos Totais"
+                type="number"
             value={editingAircraft.ciclosTotais}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, ciclosTotais: parseInt(e.target.value) })}
           />
@@ -326,8 +360,8 @@ export default function Aeronaves() {
             type="number"
             value={editingAircraft.reservaCombustivel}
             onChange={(e) => setEditingAircraft({ ...editingAircraft, reservaCombustivel: parseInt(e.target.value) })}
-          />
-        </div>
+            />
+          </div>
       </Modal>
 
       {/* Modal de Componentes */}
@@ -337,20 +371,20 @@ export default function Aeronaves() {
         title={`Componentes - ${selectedForComponents?.prefixo}`}
         size="lg"
       >
-        <div className="components-section">
+            <div className="components-section">
           <div className="components-header">
             <h4>Motor(es), Hélice(s) e Célula</h4>
-            <Button
-              size="sm"
-              icon={<Plus size={16} />}
+                <Button 
+                  size="sm" 
+                  icon={<Plus size={16} />}
               onClick={() => {
                 setEditingComponent({ tipo: 'motor' });
                 setComponentModalOpen(true);
               }}
-            >
-              Adicionar
-            </Button>
-          </div>
+                >
+                  Adicionar
+                </Button>
+              </div>
 
           <Table
             columns={[
@@ -380,15 +414,15 @@ export default function Aeronaves() {
                     >
                       <Trash2 size={14} />
                     </button>
-                  </div>
+                </div>
                 ),
               },
             ]}
             data={components}
             keyExtractor={(c) => c.id}
             emptyMessage="Nenhum componente cadastrado"
-          />
-        </div>
+                        />
+                      </div>
       </Modal>
 
       {/* Modal de Edição de Componente */}
@@ -406,41 +440,41 @@ export default function Aeronaves() {
         }
       >
         <div className="form-grid">
-          <Select
-            label="Tipo"
-            options={[
-              { value: 'motor', label: 'Motor' },
-              { value: 'helice', label: 'Hélice' },
-              { value: 'celula', label: 'Célula' },
-            ]}
+            <Select
+              label="Tipo"
+              options={[
+                { value: 'motor', label: 'Motor' },
+                { value: 'helice', label: 'Hélice' },
+                { value: 'celula', label: 'Célula' },
+              ]}
             value={editingComponent.tipo || 'motor'}
             onChange={(e) => setEditingComponent({ ...editingComponent, tipo: e.target.value as AircraftComponent['tipo'] })}
-          />
-          <Input
+            />
+            <Input
             label="Posição"
             value={editingComponent.posicao || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, posicao: e.target.value })}
             placeholder="Esquerdo, Direito, etc."
           />
-          <Input
+            <Input
             label="Serial"
             value={editingComponent.serial || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, serial: e.target.value })}
-            required
-          />
+              required
+            />
           <Input
             label="Modelo"
             value={editingComponent.modelo || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, modelo: e.target.value })}
           />
-          <Input
-            label="Fabricante"
+            <Input
+              label="Fabricante"
             value={editingComponent.fabricante || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, fabricante: e.target.value })}
-          />
-          <Input
-            label="Horas Atuais"
-            type="number"
+            />
+            <Input
+              label="Horas Atuais"
+              type="number"
             value={editingComponent.horasAtuais || 0}
             onChange={(e) => setEditingComponent({ ...editingComponent, horasAtuais: parseFloat(e.target.value) })}
           />
@@ -449,14 +483,14 @@ export default function Aeronaves() {
             type="number"
             value={editingComponent.limiteTSO || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, limiteTSO: parseFloat(e.target.value) })}
-          />
-          <Input
-            label="Ciclos Atuais"
-            type="number"
+            />
+            <Input
+              label="Ciclos Atuais"
+              type="number"
             value={editingComponent.ciclosAtuais || ''}
             onChange={(e) => setEditingComponent({ ...editingComponent, ciclosAtuais: parseInt(e.target.value) })}
-          />
-        </div>
+            />
+          </div>
       </Modal>
     </div>
   );

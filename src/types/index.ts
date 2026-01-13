@@ -10,6 +10,8 @@ export type MaintenanceType = 'preventiva' | 'corretiva' | 'inspecao' | 'revisao
 export type MaintenanceTrigger = 'horas' | 'calendario' | 'ciclos';
 export type ExpenseCategory = 'combustivel' | 'manutencao' | 'hangaragem' | 'seguro' | 'taxas' | 'pecas' | 'assinaturas' | 'outros';
 export type ExpenseType = 'fixo' | 'variavel';
+export type RevenueCategory = 'aplicacao_financeira' | 'aporte_financeiro' | 'reembolso' | 'outras_receitas';
+export type FinancialTransactionType = 'despesa' | 'receita';
 export type PaymentStatus = 'pendente' | 'pago' | 'atrasado';
 export type DocumentType = 'aeronavegabilidade' | 'seguro' | 'manual' | 'diario_manutencao' | 'cma' | 'licenca' | 'habilitacao' | 'outros';
 export type AlertType = 'manutencao' | 'documento' | 'financeiro' | 'inspecao';
@@ -316,6 +318,26 @@ export interface FlightLeg {
 // FINANCEIRO
 // ============================================
 
+export interface ManualRateio {
+  memberId: string; // ID do membro/grupo
+  grupo?: FlightEntryGroup; // Grupo do voo (grossi, shimada, etc)
+  valor: number; // Valor atribuído a este membro/grupo
+}
+
+export interface BankAccount {
+  id: string;
+  aircraftId: string;
+  nome: string; // Ex: "Conta Corrente - Banco do Brasil"
+  banco: string; // Nome do banco
+  agencia?: string;
+  conta?: string;
+  saldoInicial: number; // Saldo inicial da conta
+  saldoAtual: number; // Saldo atual (calculado)
+  ativa: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Expense {
   id: string;
   aircraftId: string;
@@ -329,11 +351,33 @@ export interface Expense {
   dataVencimento?: string;
   metodoPagamento?: string;
   fornecedor?: string;
+  contaBancariaId?: string; // ID da conta bancária
   anexos?: Attachment[];
   recorrencia?: 'mensal' | 'trimestral' | 'anual' | 'custom';
   recorrenciaCustomDias?: number;
   rateioAutomatico: boolean;
+  subVoo?: string; // Sub-voo / Referência do voo (ex: "SBSP → SBRJ | 02/01/2026")
+  rateioManual?: ManualRateio[]; // Valores manuais por grupo/membro (quando rateioAutomatico = false)
   observacoes?: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface Revenue {
+  id: string;
+  aircraftId: string;
+  categoria: RevenueCategory;
+  descricao: string;
+  valor: number;
+  moeda: string;
+  data: string;
+  contaBancariaId: string; // Obrigatório para receitas
+  origem?: string; // Origem do recurso (ex: "Banco XYZ", "Investidor ABC")
+  subVoo?: string; // Sub-voo / Referência do voo (quando aplicável)
+  rateioAutomatico: boolean;
+  rateioManual?: ManualRateio[]; // Valores manuais por grupo/membro (quando rateioAutomatico = false)
+  observacoes?: string;
+  anexos?: Attachment[];
   createdAt: string;
   createdBy: string;
 }
@@ -642,7 +686,7 @@ export interface SystemConfig {
   // Configuração TBO
   tboValorPorHora: number; // R$ 2.800,00 padrão
   // Conversão combustível
-  fatorConversaoLbsLitros: number; // ~0.54 para AVGAS
+  fatorConversaoLbsLitros: number; // ~0.567 para AVGAS (545 lbs = 309 L)
   // Reserva de Margem (Liquidez)
   reservaMargemMinima: number; // R$ 200.000,00 padrão
   alertaReservaPercentual: number; // % do mínimo para alertar (ex: 110% = alerta se < 110% do mínimo)
@@ -904,4 +948,359 @@ export interface LiquidityAlert {
   createdAt: string;
   resolvidoEm?: string;
   resolvidoPor?: string;
+}
+
+// ============================================
+// ESPECIFICAÇÕES DE AERONAVES (AIRCRAFT SPECS)
+// ============================================
+
+export type ConfidenceLevel = 'alta' | 'media' | 'baixa';
+export type SpecSource = 'poh' | 'api' | 'scraping' | 'ml_estimate' | 'manual_override';
+
+export interface SpecValue {
+  value: number | null;
+  min?: number;
+  max?: number;
+  unit: string;
+  source: SpecSource;
+  sourceUrl?: string;
+  collectedAt: string;
+  confidence: ConfidenceLevel;
+  notes?: string;
+}
+
+export interface AircraftModelSpecs {
+  // Identificação
+  manufacturer: string;
+  model: string;
+  variant?: string; // Ex: "C90GTi", "A", "B"
+  yearRange?: {
+    start: number;
+    end?: number;
+  };
+  
+  // Pesos (lbs ou kg)
+  mtow?: SpecValue; // Maximum Takeoff Weight
+  emptyWeight?: SpecValue;
+  usefulLoad?: SpecValue;
+  maxPayload?: SpecValue;
+  
+  // Combustível
+  fuelCapacityTotal?: SpecValue; // Galões ou Litros
+  fuelCapacityUsable?: SpecValue;
+  fuelType?: 'avgas' | 'jet-a';
+  
+  // Performance
+  cruiseSpeed?: {
+    economic?: SpecValue; // KTAS
+    normal?: SpecValue;
+    max?: SpecValue;
+  };
+  cruiseAltitude?: {
+    typical?: number; // ft
+    max?: number; // ft
+  };
+  serviceCeiling?: SpecValue; // ft
+  rateOfClimb?: SpecValue; // fpm (feet per minute)
+  range?: SpecValue; // NM ou km
+  
+  // Consumo de combustível
+  fuelBurn?: {
+    climb?: SpecValue; // GPH ou L/h
+    cruise?: SpecValue;
+    descent?: SpecValue;
+    idle?: SpecValue;
+  };
+  
+  // Propulsão
+  engineType?: string; // Ex: "PT6A-135A"
+  engineCount?: number;
+  enginePower?: SpecValue; // HP ou SHP (Shaft Horsepower) para turboélices
+  engineThrust?: SpecValue; // lbf para jatos
+  propellerType?: string;
+  
+  // Dimensões
+  seats?: number;
+  cabinWidth?: SpecValue; // inches
+  cabinLength?: SpecValue; // inches
+  cargoCapacity?: SpecValue; // cu ft ou lbs
+  
+  // Metadados
+  sources: {
+    type: SpecSource;
+    url?: string;
+    collectedAt: string;
+  }[];
+  lastUpdated: string;
+  isComplete: boolean; // true se todos os dados essenciais estão presentes
+  missingFields: string[]; // Lista de campos ausentes
+}
+
+export interface AircraftModel {
+  id: string;
+  manufacturer: string;
+  model: string;
+  variant?: string;
+  year?: number;
+  specs: AircraftModelSpecs;
+  createdAt: string;
+  updatedAt: string;
+  cacheStaleAt?: string; // Data após a qual considerar cache como obsoleto (>90 dias)
+}
+
+// ============================================
+// AEROPORTOS (OURAIRPORTS DATASET)
+// ============================================
+
+export type AirportType = 'small_airport' | 'medium_airport' | 'large_airport' | 'seaplane_base' | 'heliport' | 'balloonport' | 'closed';
+
+export interface AirportRecord {
+  id: string; // OurAirports ID
+  ident: string; // ICAO/IATA/local code
+  type: AirportType;
+  name: string;
+  latitude_deg: number;
+  longitude_deg: number;
+  elevation_ft?: number;
+  continent?: string;
+  iso_country: string;
+  iso_region: string; // Ex: "BR-SP"
+  municipality?: string;
+  scheduled_service: 'yes' | 'no' | '';
+  gps_code?: string; // Código ICAO preferido
+  iata_code?: string;
+  local_code?: string;
+  home_link?: string;
+  wikipedia_link?: string;
+  
+  // Campos customizados
+  isPrivate?: boolean; // Se é aeroporto privado/GA
+  fuelAvailable?: boolean;
+  fuelTypes?: ('avgas' | 'jet-a')[];
+  landingFee?: number; // R$ ou moeda local
+  parkingFee?: number;
+  fuelPrice?: {
+    avgas?: number;
+    'jet-a'?: number;
+  };
+  
+  // Metadados
+  importedAt: string;
+  lastUpdated?: string;
+}
+
+// ============================================
+// ESTIMATIVA DE VOO APRIMORADA
+// ============================================
+
+export type FlightProfile = 'economico' | 'normal' | 'rapido';
+
+export interface EnhancedFlightEstimate extends FlightEstimate {
+  // Inputs adicionais
+  profile?: FlightProfile;
+  passengers?: number;
+  baggage?: number; // lbs ou kg
+  initialFuel?: number; // litros ou galões
+  flightDate?: string; // Para buscar vento real
+  altitude?: number; // ft (altitude de cruzeiro)
+  
+  // Cálculos detalhados por fase
+  phases?: {
+    taxi: {
+      time: number; // minutos
+      fuel: number; // litros
+    };
+    climb: {
+      time: number; // minutos
+      fuel: number; // litros
+      altitude: number; // ft alcançado
+    };
+    cruise: {
+      time: number; // minutos
+      fuel: number; // litros
+      tas: number; // ktas
+      gs: number; // kts (groundspeed com vento)
+      windComponent: number; // kts (headwind positivo, tailwind negativo)
+      altitude: number; // ft
+    };
+    descent: {
+      time: number; // minutos
+      fuel: number; // litros
+    };
+  };
+  
+  // Meteorologia
+  weather?: {
+    windSpeed: number; // kts
+    windDirection: number; // graus
+    windAltitude: number; // ft
+    temperature: number; // °C
+    densityAltitude?: number; // ft
+    fetchedAt: string;
+  };
+  
+  // Confiança e incerteza
+  confidence: ConfidenceLevel;
+  uncertainty?: {
+    timeMin: number; // horas
+    timeMax: number;
+    fuelMin: number; // litros
+    fuelMax: number;
+    costMin: number; // R$
+    costMax: number;
+  };
+  confidenceReasons: string[]; // Ex: "Consumo de cruzeiro estimado por ML", "Vento não disponível"
+  
+  // Custo detalhado
+  costBreakdown?: {
+    fuel: number;
+    fuelTax?: number;
+    landingFee: number;
+    parkingFee: number;
+    operational: number;
+    total: number;
+  };
+  
+  // Métricas
+  costPerHour?: number;
+  costPerNM?: number;
+  costPerKM?: number;
+  fuelPerHour?: number; // L/h médio
+  efficiency?: number; // NM/galão ou NM/litro
+}
+
+// ============================================
+// MODELO ML / REGRAS PARA ESTIMATIVA
+// ============================================
+
+export interface PerformanceEstimate {
+  cruiseSpeed: {
+    value: number; // KTAS
+    min?: number;
+    max?: number;
+    confidence: ConfidenceLevel;
+    method: 'known' | 'ml' | 'heuristic' | 'rule';
+  };
+  fuelBurn: {
+    climb: number; // L/h
+    cruise: number;
+    descent: number;
+    confidence: ConfidenceLevel;
+    method: 'known' | 'ml' | 'heuristic' | 'rule';
+  };
+  rateOfClimb?: {
+    value: number; // fpm
+    confidence: ConfidenceLevel;
+  };
+}
+
+export interface MLModelWeights {
+  // Pesos para regressão (serão calibrados com dados reais)
+  cruiseSpeed: {
+    baseSpeed: number;
+    powerMultiplier: number;
+    mtowFactor: number;
+  };
+  fuelBurn: {
+    baseBurn: number;
+    powerFactor: number;
+    speedFactor: number;
+    mtowFactor: number;
+  };
+}
+
+// ============================================
+// CATÁLOGO DE AERONAVES
+// ============================================
+
+export interface Manufacturer {
+  id: string;
+  name: string;
+  normalizedName: string; // Para busca (lowercase, sem acentos)
+  country?: string;
+  website?: string;
+  logoUrl?: string;
+  modelCount: number; // Quantidade de modelos no catálogo
+  lastUpdated: string;
+  createdAt: string;
+}
+
+export interface AircraftCatalogModel {
+  id: string;
+  manufacturerId: string;
+  manufacturerName: string;
+  model: string;
+  normalizedModel: string; // Para busca
+  variant?: string;
+  yearRange?: {
+    start: number;
+    end?: number;
+  };
+  
+  // Classificação
+  aircraftType: AircraftType; // pistao, turbohelice, jato, helicoptero
+  
+  // Specs resumidas (para listagem)
+  specsSummary: {
+    mtow?: number; // lbs ou kg
+    seats?: number;
+    range?: number; // NM
+    cruiseSpeed?: number; // KTAS
+    engineType?: string;
+    fuelType?: 'avgas' | 'jet-a';
+  };
+  
+  // Specs completas (link para AircraftModelSpecs)
+  specsId?: string; // Referência ao AircraftModel com specs completas
+  
+  // Metadados
+  isComplete: boolean; // Se tem specs completas
+  missingFields: string[];
+  sources: {
+    type: SpecSource;
+    url?: string;
+    collectedAt: string;
+  }[];
+  
+  lastUpdated: string;
+  createdAt: string;
+}
+
+export interface CatalogFilters {
+  search?: string;
+  manufacturerId?: string;
+  aircraftType?: AircraftType[];
+  minRange?: number; // NM
+  maxRange?: number;
+  minSeats?: number;
+  maxSeats?: number;
+  minMTOW?: number; // lbs
+  maxMTOW?: number;
+  fuelType?: ('avgas' | 'jet-a')[];
+  hasCompleteSpecs?: boolean;
+}
+
+export interface CatalogPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CatalogResponse {
+  models: AircraftCatalogModel[];
+  pagination: CatalogPagination;
+  filters: CatalogFilters;
+}
+
+export interface CatalogSyncStatus {
+  lastSync: string;
+  nextSync?: string;
+  status: 'idle' | 'running' | 'error';
+  progress?: {
+    total: number;
+    processed: number;
+    errors: number;
+  };
+  error?: string;
 }
