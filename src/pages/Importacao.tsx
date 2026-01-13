@@ -386,6 +386,10 @@ export default function Importacao() {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Botão clicado!', { loading, preview, file, user, selectedAircraft });
+                if (!preview) {
+                  alert('Erro: Preview dos dados não disponível. Tente selecionar o arquivo novamente.');
+                  return;
+                }
                 handleImport();
               }}
               disabled={loading}
