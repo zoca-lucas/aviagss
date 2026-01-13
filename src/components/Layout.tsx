@@ -53,6 +53,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/relatorios-lancamentos', icon: PieChart, label: 'Relatórios Voos', show: permissions.canViewReports },
     { path: '/uso-por-socio', icon: UsersIcon, label: 'Uso por Sócio', show: permissions.canViewReports },
     { path: '/usuarios', icon: Users, label: 'Usuários', show: permissions.canManageUsers },
+    { path: '/importacao', icon: Upload, label: 'Importação', show: true },
     { path: '/configuracoes', icon: Settings, label: 'Configurações', show: true },
   ];
 

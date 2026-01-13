@@ -18,6 +18,7 @@ import UsoPorSocio from './pages/UsoPorSocio';
 import Usuarios from './pages/Usuarios';
 import Configuracoes from './pages/Configuracoes';
 import Catalogo from './pages/Catalogo';
+import Importacao from './pages/Importacao';
 
 export default function App() {
   return (
@@ -41,7 +42,8 @@ export default function App() {
               <Route path="/relatorios-lancamentos" element={<RelatoriosLancamentos />} />
               <Route path="/uso-por-socio" element={<UsoPorSocio />} />
               <Route path="/usuarios" element={<Usuarios />} />
-              <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/importacao" element={<Importacao />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
             </Routes>
           </Layout>
         </AircraftProvider>
