@@ -113,30 +113,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadSession();
 
     // Escutar mudanças de autenticação
-    if (!supabase) return;
+    if (!supabase) {
+      // Se não tem Supabase, já setamos isLoading = false no loadSession
+      return;
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session || !supabase) {
-        setUser(null);
-        return;
-      }
-
-      if (session?.user && supabase) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (profile) {
-          const userData = convertProfileToUser(profile, session.user);
-          setUser(userData);
+    let subscription: any = null;
+    try {
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session || !supabase) {
+          setUser(null);
+          return;
         }
-      }
-    });
+
+        if (session?.user && supabase) {
+          try {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (profile) {
+              const userData = convertProfileToUser(profile, session.user);
+              setUser(userData);
+            }
+          } catch (error) {
+            console.error('Erro ao carregar perfil no auth state change:', error);
+          }
+        }
+      });
+      subscription = data.subscription;
+    } catch (error) {
+      console.error('Erro ao configurar auth state change:', error);
+      setIsLoading(false);
+    }
 
     return () => {
-      subscription.unsubscribe();
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, []);
 
