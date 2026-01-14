@@ -212,11 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Criar perfil do usuário na tabela user_profiles
+      // Nota: O email não é armazenado aqui porque já está no auth.users
       const { error: profileError } = await supabase
         .from('user_profiles')
         .insert({
           user_id: authData.user.id,
-          email: email,
           nome: nome,
           telefone: telefone || null,
           role: 'cotista', // Por padrão, novos usuários são cotistas
