@@ -1,69 +1,246 @@
 -- ============================================
--- 003 - CREATE flight_entries
+-- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================
+-- Este migration configura as políticas de segurança de nível de linha
 
--- Garantir extensão UUID
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- ============================================
+-- 1. USER PROFILES
+-- ============================================
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE TABLE IF NOT EXISTS public.flight_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  aircraft_id UUID NOT NULL REFERENCES public.aircrafts(id) ON DELETE CASCADE,
+-- Permite que usuários vejam todos os perfis
+CREATE POLICY "user_profiles_select"
+ON user_profiles
+FOR SELECT
+TO authenticated
+USING (true);
 
-  voo TEXT NOT NULL,
-  sub_voo TEXT NOT NULL,
-  data DATE NOT NULL,
+-- Permite que usuários criem seu próprio perfil (durante cadastro)
+CREATE POLICY "user_profiles_insert_own"
+ON user_profiles
+FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
 
-  grupo TEXT NOT NULL CHECK (grupo IN ('grossi', 'shimada', 'grossi_shimada', 'outros')),
+-- Permite que usuários atualizem seu próprio perfil
+CREATE POLICY "user_profiles_update_own"
+ON user_profiles
+FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
-  origem TEXT NOT NULL,
-  origem_icao TEXT,
-  destino TEXT NOT NULL,
-  destino_icao TEXT,
-
-  tempo_acionamento_corte INTEGER NOT NULL,
-  tempo_voo INTEGER NOT NULL,
-
-  combustivel_inicial DECIMAL(10, 2) NOT NULL,
-  abastecimento_libras DECIMAL(10, 2) NOT NULL,
-  abastecimento_litros DECIMAL(10, 2) NOT NULL,
-  local_abastecimento TEXT,
-
-  combustivel_decolagem DECIMAL(10, 2) NOT NULL,
-  combustivel_consumido DECIMAL(10, 2) NOT NULL,
-  combustivel_consumido_litros DECIMAL(10, 2) NOT NULL,
-  combustivel_final DECIMAL(10, 2) NOT NULL,
-
-  tipo_medicao_combustivel TEXT NOT NULL CHECK (tipo_medicao_combustivel IN ('estimado', 'medido')),
-
-  valor_combustivel DECIMAL(10, 2) DEFAULT 0,
-  hangar DECIMAL(10, 2) DEFAULT 0,
-  alimentacao DECIMAL(10, 2) DEFAULT 0,
-  hospedagem DECIMAL(10, 2) DEFAULT 0,
-  limpeza DECIMAL(10, 2) DEFAULT 0,
-  uber_taxi DECIMAL(10, 2) DEFAULT 0,
-  tarifas DECIMAL(10, 2) DEFAULT 0,
-  outras DECIMAL(10, 2) DEFAULT 0,
-
-  provisao_tbo_grossi DECIMAL(10, 2) DEFAULT 0,
-  provisao_tbo_shimada DECIMAL(10, 2) DEFAULT 0,
-
-  total DECIMAL(10, 2) NOT NULL,
-
-  cobrado_de TEXT,
-  rateio_observacao TEXT,
-
-  status TEXT NOT NULL DEFAULT 'provisorio' CHECK (status IN ('provisorio', 'conferido')),
-
-  observacoes TEXT,
-  anexos JSONB,
-
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID NOT NULL REFERENCES auth.users(id),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  UNIQUE(aircraft_id, voo, sub_voo)
+-- Admin e gestores podem atualizar qualquer perfil
+CREATE POLICY "user_profiles_update_admin"
+ON user_profiles
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
 );
 
-CREATE INDEX IF NOT EXISTS idx_flight_entries_aircraft_id ON public.flight_entries(aircraft_id);
-CREATE INDEX IF NOT EXISTS idx_flight_entries_data ON public.flight_entries(data DESC);
-CREATE INDEX IF NOT EXISTS idx_flight_entries_voo ON public.flight_entries(voo, sub_voo);
+-- ============================================
+-- 2. AIRCRAFTS
+-- ============================================
+ALTER TABLE aircrafts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "aircrafts_select_members"
+ON aircrafts
+FOR SELECT
+TO authenticated
+USING (
+  active = true AND (
+    -- Admin e gestores veem todos
+    EXISTS (
+      SELECT 1 FROM user_profiles
+      WHERE user_id = auth.uid()
+      AND role IN ('admin', 'gestor')
+    )
+    OR
+    -- Usuários veem apenas aeronaves em que são membros
+    EXISTS (
+      SELECT 1 FROM memberships
+      WHERE aircraft_id = aircrafts.id
+      AND user_id = auth.uid()
+      AND status = 'ativo'
+    )
+  )
+);
+
+CREATE POLICY "aircrafts_insert_admin"
+ON aircrafts
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+CREATE POLICY "aircrafts_update_admin"
+ON aircrafts
+FOR UPDATE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+-- ============================================
+-- 3. MEMBERSHIPS
+-- ============================================
+ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "memberships_select"
+ON memberships
+FOR SELECT
+TO authenticated
+USING (
+  -- Usuário vê suas próprias memberships
+  user_id = auth.uid()
+  OR
+  -- Admin e gestores veem todas
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+CREATE POLICY "memberships_insert_admin"
+ON memberships
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+-- ============================================
+-- 4. FLIGHTS
+-- ============================================
+ALTER TABLE flights ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "flights_select_members"
+ON flights
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = flights.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+  OR
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+CREATE POLICY "flights_insert"
+ON flights
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = flights.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+  OR
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor', 'piloto')
+  )
+);
+
+-- ============================================
+-- 5. EXPENSES
+-- ============================================
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "expenses_select_members"
+ON expenses
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = expenses.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+);
+
+CREATE POLICY "expenses_insert"
+ON expenses
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = expenses.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+  OR
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
+
+-- ============================================
+-- 6. REVENUES
+-- ============================================
+ALTER TABLE revenues ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "revenues_select_members"
+ON revenues
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = revenues.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+);
+
+CREATE POLICY "revenues_insert"
+ON revenues
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM memberships
+    WHERE aircraft_id = revenues.aircraft_id
+    AND user_id = auth.uid()
+    AND status = 'ativo'
+  )
+  OR
+  EXISTS (
+    SELECT 1 FROM user_profiles
+    WHERE user_id = auth.uid()
+    AND role IN ('admin', 'gestor')
+  )
+);
