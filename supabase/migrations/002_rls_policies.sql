@@ -8,6 +8,12 @@
 -- ============================================
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
+-- Drop policies antigas se existirem
+DROP POLICY IF EXISTS "user_profiles_select" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_insert_own" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update_own" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update_admin" ON user_profiles;
+
 -- Permite que usuários vejam todos os perfis
 CREATE POLICY "user_profiles_select"
 ON user_profiles
@@ -48,20 +54,22 @@ USING (
 -- ============================================
 ALTER TABLE aircrafts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "aircrafts_select_members" ON aircrafts;
+DROP POLICY IF EXISTS "aircrafts_insert_admin" ON aircrafts;
+DROP POLICY IF EXISTS "aircrafts_update_admin" ON aircrafts;
+
 CREATE POLICY "aircrafts_select_members"
 ON aircrafts
 FOR SELECT
 TO authenticated
 USING (
   active = true AND (
-    -- Admin e gestores veem todos
     EXISTS (
       SELECT 1 FROM user_profiles
       WHERE user_id = auth.uid()
       AND role IN ('admin', 'gestor')
     )
     OR
-    -- Usuários veem apenas aeronaves em que são membros
     EXISTS (
       SELECT 1 FROM memberships
       WHERE aircraft_id = aircrafts.id
@@ -100,15 +108,16 @@ USING (
 -- ============================================
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "memberships_select" ON memberships;
+DROP POLICY IF EXISTS "memberships_insert_admin" ON memberships;
+
 CREATE POLICY "memberships_select"
 ON memberships
 FOR SELECT
 TO authenticated
 USING (
-  -- Usuário vê suas próprias memberships
   user_id = auth.uid()
   OR
-  -- Admin e gestores veem todas
   EXISTS (
     SELECT 1 FROM user_profiles
     WHERE user_id = auth.uid()
@@ -132,6 +141,9 @@ WITH CHECK (
 -- 4. FLIGHTS
 -- ============================================
 ALTER TABLE flights ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "flights_select_members" ON flights;
+DROP POLICY IF EXISTS "flights_insert" ON flights;
 
 CREATE POLICY "flights_select_members"
 ON flights
@@ -176,6 +188,9 @@ WITH CHECK (
 -- ============================================
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "expenses_select_members" ON expenses;
+DROP POLICY IF EXISTS "expenses_insert" ON expenses;
+
 CREATE POLICY "expenses_select_members"
 ON expenses
 FOR SELECT
@@ -212,6 +227,9 @@ WITH CHECK (
 -- 6. REVENUES
 -- ============================================
 ALTER TABLE revenues ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "revenues_select_members" ON revenues;
+DROP POLICY IF EXISTS "revenues_insert" ON revenues;
 
 CREATE POLICY "revenues_select_members"
 ON revenues
