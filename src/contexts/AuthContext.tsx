@@ -73,7 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Carregar sessão do Supabase
     const loadSession = async () => {
-      if (!supabase) return;
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -85,24 +88,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (session?.user && supabase) {
-          // Buscar perfil do usuário
-          const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
+          try {
+            // Buscar perfil do usuário
+            const { data: profile, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single();
 
-          if (profileError) {
-            console.error('Erro ao carregar perfil:', profileError);
+            if (profileError) {
+              console.error('Erro ao carregar perfil:', profileError);
+              // Não é crítico se não encontrar o perfil, apenas não seta o usuário
+              setIsLoading(false);
+              return;
+            }
+
+            if (profile) {
+              const userData = convertProfileToUser(profile, session.user);
+              setUser(userData);
+            }
+          } catch (profileError) {
+            console.error('Erro ao buscar perfil:', profileError);
             setIsLoading(false);
             return;
           }
-
-          if (profile) {
-            const userData = convertProfileToUser(profile, session.user);
-            setUser(userData);
-          }
         }
+        // Se não há sessão, apenas continua e seta isLoading = false no finally
       } catch (error) {
         console.error('Erro ao carregar sessão:', error);
       } finally {
